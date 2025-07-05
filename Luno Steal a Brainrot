@@ -1,65 +1,183 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/basedgooner/AntiKick/refs/heads/main/Antikick"))()
-local Rayfield=loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+loadstring(
+    game:HttpGet(
+        'https://raw.githubusercontent.com/basedgooner/AntiKick/refs/heads/main/Antikick'
+    )
+)()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Window=Rayfield:CreateWindow({
-    Name="Steal",
-    LoadingTitle="Steal",
-    LoadingSubtitle="by You",
-    Theme="DarkBlue",
-    ConfigurationSaving={Enabled=true,FileName="StealConfig"}
+local Window = Rayfield:CreateWindow({
+    Name = 'Steal',
+    LoadingTitle = 'Steal',
+    LoadingSubtitle = 'by You',
+    Theme = 'DarkBlue',
+    ConfigurationSaving = { Enabled = true, FileName = 'StealConfig' },
 })
 
-local StealTab=Window:CreateTab("Steal","shield-off")
-local MovementTab=Window:CreateTab("Movement","move")
-local VisualsTab=Window:CreateTab("Visuals","eye")
+local StealTab = Window:CreateTab('Steal', 'shield-off')
+local MovementTab = Window:CreateTab('Movement', 'move')
+local VisualsTab = Window:CreateTab('Visuals', 'eye')
+local ShopTab = Window:CreateTab('Shop', 'shopping-cart')
 
-local INTERVAL=0.25
-local GEN={
-    ["Noobini Pizzanini"]=1,["Lirilì Larilà"]=3,["Tim Cheese"]=5,["Fluriflura"]=7,["Talpa Di Fero"]=9,
-    ["Svinina Bombardino"]=10,["Pipi Kiwi"]=13,["Trippi Troppi"]=15,["Tung Tung Tung Sahur"]=25,
-    ["Gangster Footera"]=30,["Boneca Ambalabu"]=40,["Ta Ta Ta Ta Sahur"]=55,["Tric Trac Baraboom"]=65,
-    ["Cappuccino Assassino"]=75,["Brr Brr Patapim"]=100,["Trulimero Trulicina"]=125,["Bambini Crostini"]=135,
-    ["Bananita Dolphinita"]=150,["Perochello Lemonchello"]=160,["Brri Brri Bicus Dicus Bombicus"]=175,
-    ["Chimpanzini Bananini"]=300,["Burbaloni Loliloli"]=200,["Rhino Toasterino"]=2150,["Chef Crabracadabra"]=600,
-    ["Glorbo Fruttodrillo"]=750,["Blueberrinni Octopusini"]=1000,["Frigo Camelo"]=1250,["Orangutini Ananassini"]=1750,
-    ["Bombardiro Crocodilo"]=2500,["Bombombini Gusini"]=5000,["Cocofanto Elefanto"]=10000,["Girafa Celestre"]=20000,
-    ["Gattatino Nyanino"]=25000,["Matteo"]=50000,["Tralalero Tralala"]=50000,["Odin Din Din Dun"]=75000,
-    ["Trenostruzzo Turbo 3000"]=150000,["La Vacca Saturno Saturnita"]=250000,["Los Tralaleritos"]=500000,
-    ["Graipuss Medussi"]=1000000,["La Grande Combinasion"]=10000000
+local INTERVAL = 0.25
+local GEN = {
+    ['Noobini Pizzanini'] = 1,
+    ['Lirilì Larilà'] = 3,
+    ['Tim Cheese'] = 5,
+    ['Fluriflura'] = 7,
+    ['Talpa Di Fero'] = 9,
+    ['Svinina Bombardino'] = 10,
+    ['Pipi Kiwi'] = 13,
+    ['Trippi Troppi'] = 15,
+    ['Tung Tung Tung Sahur'] = 25,
+    ['Gangster Footera'] = 30,
+    ['Boneca Ambalabu'] = 40,
+    ['Ta Ta Ta Ta Sahur'] = 55,
+    ['Tric Trac Baraboom'] = 65,
+    ['Cappuccino Assassino'] = 75,
+    ['Brr Brr Patapim'] = 100,
+    ['Trulimero Trulicina'] = 125,
+    ['Bambini Crostini'] = 135,
+    ['Bananita Dolphinita'] = 150,
+    ['Perochello Lemonchello'] = 160,
+    ['Brri Brri Bicus Dicus Bombicus'] = 175,
+    ['Chimpanzini Bananini'] = 300,
+    ['Burbaloni Loliloli'] = 200,
+    ['Rhino Toasterino'] = 2150,
+    ['Chef Crabracadabra'] = 600,
+    ['Glorbo Fruttodrillo'] = 750,
+    ['Blueberrinni Octopusini'] = 1000,
+    ['Frigo Camelo'] = 1250,
+    ['Orangutini Ananassini'] = 1750,
+    ['Bombardiro Crocodilo'] = 2500,
+    ['Bombombini Gusini'] = 5000,
+    ['Cocofanto Elefanto'] = 10000,
+    ['Girafa Celestre'] = 20000,
+    ['Gattatino Nyanino'] = 25000,
+    ['Matteo'] = 50000,
+    ['Tralalero Tralala'] = 50000,
+    ['Odin Din Din Dun'] = 75000,
+    ['Trenostruzzo Turbo 3000'] = 150000,
+    ['La Vacca Saturno Saturnita'] = 250000,
+    ['Los Tralaleritos'] = 500000,
+    ['Graipuss Medussi'] = 1000000,
+    ['La Grande Combinasion'] = 10000000,
 }
 
-local Players=game:GetService("Players")
-local TweenService=game:GetService("TweenService")
-local MOVING_FOLDER=workspace:WaitForChild("RenderedMovingAnimals")
-local TAG_HL,TAG_GUI="TopGenHighlight","TopGenBillboard"
-local PLAYER_HL="PlayerESP_HL"
+local Players = game:GetService('Players')
+local TweenService = game:GetService('TweenService')
+local PathfindingService = game:GetService('PathfindingService')
+local MOVING_FOLDER = workspace:WaitForChild('RenderedMovingAnimals')
+local TAG_HL, TAG_GUI = 'TopGenHighlight', 'TopGenBillboard'
+local PLAYER_HL = 'PlayerESP_HL'
 
-local RAINBOW_COLORS={
-    Color3.fromRGB(255,0,0),Color3.fromRGB(255,127,0),Color3.fromRGB(255,255,0),Color3.fromRGB(0,255,0),
-    Color3.fromRGB(0,255,255),Color3.fromRGB(0,0,255),Color3.fromRGB(255,0,255),Color3.fromRGB(255,0,127)
+local RAINBOW_COLORS = {
+    Color3.fromRGB(255, 0, 0),
+    Color3.fromRGB(255, 127, 0),
+    Color3.fromRGB(255, 255, 0),
+    Color3.fromRGB(0, 255, 0),
+    Color3.fromRGB(0, 255, 255),
+    Color3.fromRGB(0, 0, 255),
+    Color3.fromRGB(255, 0, 255),
+    Color3.fromRGB(255, 0, 127),
 }
 
-local function formatNumber(n)return tostring(n):reverse():gsub("%d%d%d","%1,"):reverse():gsub("^,","")end
-local function clearVisuals()for _,m in ipairs(workspace:GetChildren())do if m:FindFirstChild(TAG_HL)then m[TAG_HL]:Destroy()end;if m:FindFirstChild(TAG_GUI)then m[TAG_GUI]:Destroy()end end end
-local function isBasePet(m)return m:IsA("Model")and GEN[m.Name]and not MOVING_FOLDER:IsAncestorOf(m)end
-local function createSmoothRainbowTween(o,p)local ti=TweenInfo.new(2,Enum.EasingStyle.Linear,Enum.EasingDirection.InOut,-1,false)local cv=Instance.new("Color3Value")cv.Value=RAINBOW_COLORS[1]cv:GetPropertyChangedSignal("Value"):Connect(function()o[p]=cv.Value end)TweenService:Create(cv,ti,{Value=RAINBOW_COLORS[#RAINBOW_COLORS]}):Play()end
-
-local function attachVisuals(m,g)
-    local root=m:FindFirstChild("RootPart")or m:FindFirstChildWhichIsA("BasePart")if not root then return end
-    local hl=Instance.new("Highlight")hl.Name=TAG_HL hl.Adornee=m hl.FillTransparency=0.1 hl.OutlineTransparency=0 hl.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop hl.Parent=m
-    createSmoothRainbowTween(hl,"FillColor")createSmoothRainbowTween(hl,"OutlineColor")
-    local gui=Instance.new("BillboardGui")gui.Name=TAG_GUI gui.Adornee=root gui.AlwaysOnTop=true gui.Size=UDim2.new(0,400,0,80)gui.StudsOffset=Vector3.new(0,4,0)gui.Parent=m
-    local n=Instance.new("TextLabel")n.Size=UDim2.new(1,0,0.5,0)n.Position=UDim2.new(0.5,0,0.35,0)n.AnchorPoint=Vector2.new(0.5,0.5)n.BackgroundTransparency=1;n.Font=Enum.Font.GothamBlack;n.TextSize=22;n.Text=m.Name:upper();n.TextXAlignment=Enum.TextXAlignment.Center
-    local ns=Instance.new("UIStroke")ns.Thickness=4.5;ns.Color=Color3.new(0,0,0);ns.Parent=n
-    local nso=Instance.new("UIStroke")nso.Thickness=5.5;nso.Color=Color3.new(1,1,1);nso.Parent=n
-    local gL=Instance.new("TextLabel")gL.Size=UDim2.new(1,0,0.5,0)gL.Position=UDim2.new(0.5,0,0.75,0)gL.AnchorPoint=Vector2.new(0.5,0.5)gL.BackgroundTransparency=1;gL.Font=Enum.Font.GothamBlack;gL.TextSize=32;gL.Text="$"..formatNumber(g).."/s";gL.TextXAlignment=Enum.TextXAlignment.Center
-    local gs=Instance.new("UIStroke")gs.Thickness=6;gs.Color=Color3.new(0,0,0);gs.Parent=gL
-    local gso=Instance.new("UIStroke")gso.Thickness=7;gso.Color=Color3.new(1,1,1);gso.Parent=gL
-    n.Parent=gui;gL.Parent=gui
-    createSmoothRainbowTween(n,"TextColor3")createSmoothRainbowTween(gL,"TextColor3")
+local function formatNumber(n)
+    return tostring(n):reverse():gsub('%d%d%d', '%1,'):reverse():gsub('^,', '')
+end
+local function clearVisuals()
+    for _, m in ipairs(workspace:GetChildren()) do
+        if m:FindFirstChild(TAG_HL) then
+            m[TAG_HL]:Destroy()
+        end
+        if m:FindFirstChild(TAG_GUI) then
+            m[TAG_GUI]:Destroy()
+        end
+    end
+end
+local function isBasePet(m)
+    return m:IsA('Model') and GEN[m.Name] and not MOVING_FOLDER:IsAncestorOf(m)
+end
+local function createSmoothRainbowTween(o, p)
+    local ti = TweenInfo.new(
+        2,
+        Enum.EasingStyle.Linear,
+        Enum.EasingDirection.InOut,
+        -1,
+        false
+    )
+    local cv = Instance.new('Color3Value')
+    cv.Value = RAINBOW_COLORS[1]
+    cv:GetPropertyChangedSignal('Value'):Connect(function()
+        o[p] = cv.Value
+    end)
+    TweenService
+        :Create(cv, ti, { Value = RAINBOW_COLORS[#RAINBOW_COLORS] })
+        :Play()
 end
 
-local espEnabled=false
+local function attachVisuals(m, g)
+    local root = m:FindFirstChild('RootPart')
+        or m:FindFirstChildWhichIsA('BasePart')
+    if not root then
+        return
+    end
+    local hl = Instance.new('Highlight')
+    hl.Name = TAG_HL
+    hl.Adornee = m
+    hl.FillTransparency = 0.1
+    hl.OutlineTransparency = 0
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Parent = m
+    createSmoothRainbowTween(hl, 'FillColor')
+    createSmoothRainbowTween(hl, 'OutlineColor')
+    local gui = Instance.new('BillboardGui')
+    gui.Name = TAG_GUI
+    gui.Adornee = root
+    gui.AlwaysOnTop = true
+    gui.Size = UDim2.new(0, 400, 0, 80)
+    gui.StudsOffset = Vector3.new(0, 4, 0)
+    gui.Parent = m
+    local n = Instance.new('TextLabel')
+    n.Size = UDim2.new(1, 0, 0.5, 0)
+    n.Position = UDim2.new(0.5, 0, 0.35, 0)
+    n.AnchorPoint = Vector2.new(0.5, 0.5)
+    n.BackgroundTransparency = 1
+    n.Font = Enum.Font.GothamBlack
+    n.TextSize = 22
+    n.Text = m.Name:upper()
+    n.TextXAlignment = Enum.TextXAlignment.Center
+    local ns = Instance.new('UIStroke')
+    ns.Thickness = 4.5
+    ns.Color = Color3.new(0, 0, 0)
+    ns.Parent = n
+    local nso = Instance.new('UIStroke')
+    nso.Thickness = 5.5
+    nso.Color = Color3.new(1, 1, 1)
+    nso.Parent = n
+    local gL = Instance.new('TextLabel')
+    gL.Size = UDim2.new(1, 0, 0.5, 0)
+    gL.Position = UDim2.new(0.5, 0, 0.75, 0)
+    gL.AnchorPoint = Vector2.new(0.5, 0.5)
+    gL.BackgroundTransparency = 1
+    gL.Font = Enum.Font.GothamBlack
+    gL.TextSize = 32
+    gL.Text = '$' .. formatNumber(g) .. '/s'
+    gL.TextXAlignment = Enum.TextXAlignment.Center
+    local gs = Instance.new('UIStroke')
+    gs.Thickness = 6
+    gs.Color = Color3.new(0, 0, 0)
+    gs.Parent = gL
+    local gso = Instance.new('UIStroke')
+    gso.Thickness = 7
+    gso.Color = Color3.new(1, 1, 1)
+    gso.Parent = gL
+    n.Parent = gui
+    gL.Parent = gui
+    createSmoothRainbowTween(n, 'TextColor3')
+    createSmoothRainbowTween(gL, 'TextColor3')
+end
+
+local espEnabled = false
 local function espLoop()
     while espEnabled do
         local highest, bestGen = nil, -1
@@ -73,20 +191,32 @@ local function espLoop()
             end
         end
         clearVisuals()
-        if highest then attachVisuals(highest, bestGen) end
+        if highest then
+            attachVisuals(highest, bestGen)
+        end
         task.wait(INTERVAL)
     end
     clearVisuals()
 end
 
-local function enableESP()if espEnabled then return end espEnabled=true task.spawn(espLoop)end
-local function disableESP()espEnabled=false end
+local function enableESP()
+    if espEnabled then
+        return
+    end
+    espEnabled = true
+    task.spawn(espLoop)
+end
+local function disableESP()
+    espEnabled = false
+end
 
-local playerEspEnabled=false
-local playerConns={}
+local playerEspEnabled = false
+local playerConns = {}
 local function addOutline(char)
-    if not char or char:FindFirstChild(PLAYER_HL) then return end
-    local hl = Instance.new("Highlight")
+    if not char or char:FindFirstChild(PLAYER_HL) then
+        return
+    end
+    local hl = Instance.new('Highlight')
     hl.Name = PLAYER_HL
     hl.Adornee = char
     hl.FillTransparency = 0.8
@@ -96,31 +226,379 @@ local function addOutline(char)
     hl.Parent = char
 end
 local function enablePlayerESP()
-    if playerEspEnabled then return end
-    playerEspEnabled=true
-    for _,p in ipairs(Players:GetPlayers())do addOutline(p.Character)p.CharacterAdded:Connect(addOutline)table.insert(playerConns,p.CharacterAdded:Connect(addOutline))end
-    table.insert(playerConns,Players.PlayerAdded:Connect(function(plr)table.insert(playerConns,plr.CharacterAdded:Connect(addOutline))addOutline(plr.Character)end))
+    if playerEspEnabled then
+        return
+    end
+    playerEspEnabled = true
+    for _, p in ipairs(Players:GetPlayers()) do
+        addOutline(p.Character)
+        p.CharacterAdded:Connect(addOutline)
+        table.insert(playerConns, p.CharacterAdded:Connect(addOutline))
+    end
+    table.insert(
+        playerConns,
+        Players.PlayerAdded:Connect(function(plr)
+            table.insert(playerConns, plr.CharacterAdded:Connect(addOutline))
+            addOutline(plr.Character)
+        end)
+    )
 end
 local function disablePlayerESP()
-    playerEspEnabled=false
-    for _,p in ipairs(Players:GetPlayers())do if p.Character and p.Character:FindFirstChild(PLAYER_HL)then p.Character[PLAYER_HL]:Destroy()end end
-    for _,c in ipairs(playerConns)do pcall(function()c:Disconnect()end)end
+    playerEspEnabled = false
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character and p.Character:FindFirstChild(PLAYER_HL) then
+            p.Character[PLAYER_HL]:Destroy()
+        end
+    end
+    for _, c in ipairs(playerConns) do
+        pcall(function()
+            c:Disconnect()
+        end)
+    end
     table.clear(playerConns)
 end
 
-local CFWalk_Enabled=false
-local CFWalk_Speed=105
-local p=Players.LocalPlayer
-local c=p.Character or p.CharacterAdded:Wait()
-local hrp=c:WaitForChild("HumanoidRootPart")
-local uis=game:GetService("UserInputService")
-local rs=game:GetService("RunService")
-local keys={}
-uis.InputBegan:Connect(function(i,g)if g then return end if i.UserInputType==Enum.UserInputType.Keyboard then keys[i.KeyCode]=true end end)
-uis.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.Keyboard then keys[i.KeyCode]=false end end)
-rs.RenderStepped:Connect(function(dt)if not CFWalk_Enabled then return end local cam=workspace.CurrentCamera local v=Vector3.zero if keys[Enum.KeyCode.W] then v+=Vector3.new(0,0,-1)end if keys[Enum.KeyCode.S] then v+=Vector3.new(0,0,1)end if keys[Enum.KeyCode.A] then v+=Vector3.new(-1,0,0)end if keys[Enum.KeyCode.D] then v+=Vector3.new(1,0,0)end if keys[Enum.KeyCode.E] then v+=Vector3.new(0,1,0)end if keys[Enum.KeyCode.Q] then v+=Vector3.new(0,-1,0)end if v.Magnitude==0 then return end local dir=cam.CFrame:VectorToWorldSpace(v).Unit local move=hrp.Position + dir * CFWalk_Speed * dt local smooth=hrp.Position:Lerp(move,0.1) local flatDir=Vector3.new(dir.X,0,dir.Z).Unit local look=smooth + (flatDir.Magnitude > 0 and flatDir or hrp.CFrame.LookVector) hrp.CFrame=CFrame.lookAt(smooth, look)end)
+-- Bypass Speed variables and logic
+local bypassSpeedEnabled = false
+local bypassSpeedValue = 105
+local speedCoilName = 'Speed Coil'
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild('Humanoid')
+local backpack = player:WaitForChild('Backpack')
+local userInputService = game:GetService('UserInputService')
+local runService = game:GetService('RunService')
 
-VisualsTab:CreateToggle({Name="Highest Gen Brainrot ESP",CurrentValue=false,Flag="BrainrotESP",Callback=function(v)if v then enableESP()else disableESP()end end})
-VisualsTab:CreateToggle({Name="Player ESP",CurrentValue=false,Flag="PlayerESP",Callback=function(v)if v then enablePlayerESP()else disablePlayerESP()end end})
-MovementTab:CreateToggle({Name="CFrame Walk",CurrentValue=false,Flag="CFrameWalk",Callback=function(v)CFWalk_Enabled=v end})
-MovementTab:CreateSlider({Name="CFrame Speed",Range={75,250},Increment=1,Suffix="speed",CurrentValue=105,Flag="CFrameSpeed",Callback=function(val)CFWalk_Speed=val end})
+local coilEquipped = false
+
+local function equipAndUnequipCoil()
+    local coilTool = backpack:FindFirstChild(speedCoilName) or character:FindFirstChild(speedCoilName)
+    if coilTool then
+        coilTool.Parent = character
+        task.wait(0.1) -- ensure a slight delay for the equip to register
+        coilTool.Parent = backpack
+    else
+        print("Speed Coil not found!")
+    end
+end
+
+
+local keys = {}
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        keys[input.KeyCode] = true
+    end
+end)
+userInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        keys[input.KeyCode] = false
+    end
+end)
+
+local hrp = character:WaitForChild('HumanoidRootPart')
+
+runService.RenderStepped:Connect(function(dt)
+    if not bypassSpeedEnabled then return end
+    local cam = workspace.CurrentCamera
+    local moveVector = Vector3.new(0, 0, 0)
+    if keys[Enum.KeyCode.W] then moveVector += Vector3.new(0, 0, -1) end
+    if keys[Enum.KeyCode.S] then moveVector += Vector3.new(0, 0, 1) end
+    if keys[Enum.KeyCode.A] then moveVector += Vector3.new(-1, 0, 0) end
+    if keys[Enum.KeyCode.D] then moveVector += Vector3.new(1, 0, 0) end
+    if keys[Enum.KeyCode.E] then moveVector += Vector3.new(0, 1, 0) end
+    if keys[Enum.KeyCode.Q] then moveVector += Vector3.new(0, -1, 0) end
+    if moveVector.Magnitude == 0 then return end
+
+    local direction = cam.CFrame:VectorToWorldSpace(moveVector).Unit
+    local movePos = hrp.Position + direction * bypassSpeedValue * dt
+
+    if not coilEquipped then
+        coilEquipped = true
+        spawn(equipAndUnequipCoil)
+    end
+
+    local smoothPos = hrp.Position:Lerp(movePos, 0.1)
+    local flatDir = Vector3.new(direction.X, 0, direction.Z).Unit
+    local look = smoothPos + (flatDir.Magnitude > 0 and flatDir or hrp.CFrame.LookVector)
+    hrp.CFrame = CFrame.lookAt(smoothPos, look)
+end)
+
+local function onCharacterAdded(char)
+    humanoid = char:WaitForChild('Humanoid')
+    hrp = char:WaitForChild('HumanoidRootPart')
+
+    humanoid.Died:Connect(function()
+        if bypassSpeedEnabled then
+            task.delay(1, function()
+                if bypassSpeedEnabled then
+                    character = player.Character
+                    if character then
+                        hrp = character:FindFirstChild('HumanoidRootPart')
+                        if hrp then
+                            spawn(equipAndUnequipCoil)
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+
+MovementTab:CreateToggle({
+    Name = 'Bypass Speed (Uses Speed Coil Gear)',
+    CurrentValue = false,
+    Flag = 'BypassSpeed',
+    Callback = function(value)
+        bypassSpeedEnabled = value
+        if not value then
+            coilEquipped = false
+        end
+    end,
+})
+MovementTab:CreateSlider({
+    Name = 'Speed Value',
+    Range = { 75, 450 },
+    Increment = 1,
+    Suffix = 'speed',
+    CurrentValue = 105,
+    Flag = 'BypassSpeedValue',
+    Callback = function(val)
+        bypassSpeedValue = val
+    end,
+})
+
+VisualsTab:CreateToggle({
+    Name = 'Highest Gen Brainrot ESP',
+    CurrentValue = false,
+    Flag = 'BrainrotESP',
+    Callback = function(v)
+        if v then
+            enableESP()
+        else
+            disableESP()
+        end
+    end,
+})
+VisualsTab:CreateToggle({
+    Name = 'Player ESP',
+    CurrentValue = false,
+    Flag = 'PlayerESP',
+    Callback = function(v)
+        if v then
+            enablePlayerESP()
+        else
+            disablePlayerESP()
+        end
+    end,
+})
+
+-- Shop Tab implementation
+local buyRemote =
+    game:GetService('ReplicatedStorage').Packages.Net['RF/CoinsShopService/RequestBuy']
+
+local shopItems = {
+    'Slap',
+    'Speed Coil',
+    'Trap',
+    'Iron Slap',
+    'Gravity Coil',
+    'Bee Launcher',
+    'Gold Slap',
+    'Coil Combo',
+    'Rage Table',
+    'Diamond Slap',
+    'Grapple Hook',
+    'Taser Gun',
+    'Emerald Slap',
+    'Invisibility Cloak',
+    'Boogie Bomb',
+    'Ruby Slap',
+    "Medusa's Head",
+    'Dark Matter Slap',
+    'Web Slinger',
+    'Flame Slap',
+    'Quantum Cloner',
+    'All Seeing Sentry',
+    'Nuclear Slap',
+    'Rainbowrath Sword',
+    'Galaxy Slap',
+    'Laser Cape',
+    'Glitched Slap',
+    'Body Swap Potion',
+    'Splatter Slap',
+    'Paintball Gun',
+}
+
+local priorityOrder =
+    {
+        'Invisibility Cloak',
+        'Quantum Cloner',
+        "Medusa's Head",
+    }
+
+table.sort(shopItems, function(a, b)
+    local aIndex = table.find(priorityOrder, a)
+    local bIndex = table.find(priorityOrder, b)
+    if aIndex and bIndex then
+        return aIndex < bIndex
+    elseif aIndex then
+        return true
+    elseif bIndex then
+        return false
+    else
+        return a < b
+    end
+end)
+
+local buyAllToggle = nil
+local buyingAll = false
+
+local function buyItem(itemName)
+    local success, result = pcall(function()
+        return buyRemote:InvokeServer(itemName)
+    end)
+    print('Bought', itemName, 'Success:', success, 'Result:', result)
+end
+
+buyAllToggle = ShopTab:CreateToggle({
+    Name = 'Buy All Items',
+    CurrentValue = false,
+    Flag = 'BuyAllItems',
+    Callback = function(value)
+        buyingAll = value
+        if buyingAll then
+            spawn(function()
+                for _, itemName in ipairs(shopItems) do
+                    if not buyingAll then
+                        break
+                    end
+                    buyItem(itemName)
+                    task.wait(0.1)
+                end
+                buyAllToggle:Set(false) -- auto toggle off after done
+                buyingAll = false
+            end)
+        end
+    end,
+})
+
+for _, itemName in ipairs(shopItems) do
+    ShopTab:CreateButton({
+        Name = 'Buy ' .. itemName,
+        Callback = function()
+            buyItem(itemName)
+        end,
+    })
+end
+
+-- Steal Best Implementation
+local stealBestEnabled = false
+local stealMethod = "Pathfinding" -- default
+local speedTiers = {
+    Slow = 8,
+    Normal = 16,
+    Fast = 32,
+    Max = 64,
+}
+local tweenSpeedSelection = "Normal"
+
+local function pathFindAndTween(targetPos, speed)
+    if not hrp or not hrp.Parent then return end
+    local path = PathfindingService:CreatePath()
+    path:ComputeAsync(hrp.Position, targetPos)
+    if path.Status ~= Enum.PathStatus.Success then
+        return false
+    end
+    local waypoints = path:GetWaypoints()
+    for i, waypoint in ipairs(waypoints) do
+        if not hrp or not hrp.Parent then return false end
+        local nextPos = waypoint.Position + Vector3.new(0, 3, 0)
+        local distance = (hrp.Position - nextPos).Magnitude
+        local tweenTime = distance / speed
+        local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+        local tween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(nextPos)})
+        tween:Play()
+        tween.Completed:Wait()
+        if waypoint.Action == Enum.PathWaypointAction.Jump then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end
+    return true
+end
+
+local function directTween(targetPos, speed)
+    if not hrp or not hrp.Parent then return end
+    local distance = (hrp.Position - targetPos).Magnitude
+    local tweenTime = distance / speed
+    local tweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(hrp, tweenInfo, {CFrame = CFrame.new(targetPos)})
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+StealTab:CreateToggle({
+    Name = 'Steal Best',
+    CurrentValue = false,
+    Flag = 'StealBest',
+    Callback = function(val)
+        stealBestEnabled = val
+    end,
+})
+
+StealTab:CreateDropdown({
+    Name = 'Method',
+    Options = {'Pathfinding', 'Direct'},
+    CurrentOption = 'Pathfinding',
+    Flag = 'StealMethod',
+    Callback = function(option)
+        stealMethod = option
+    end,
+})
+
+StealTab:CreateDropdown({
+    Name = 'Tween Speed',
+    Options = {'Slow', 'Normal', 'Fast', 'Max'},
+    CurrentOption = 'Normal',
+    Flag = 'TweenSpeed',
+    Callback = function(option)
+        tweenSpeedSelection = option
+    end,
+})
+
+task.spawn(function()
+    while true do
+        if stealBestEnabled then
+            local highest, bestGen = nil, -1
+            for _, m in ipairs(workspace:GetChildren()) do
+                if isBasePet(m) then
+                    local g = GEN[m.Name]
+                    if g and g > bestGen then
+                        bestGen = g
+                        highest = m
+                    end
+                end
+            end
+            if highest then
+                local root = highest:FindFirstChild('RootPart') or highest:FindFirstChildWhichIsA('BasePart')
+                if root then
+                    local speedVal = (speedTiers[tweenSpeedSelection] or 16) * 5 -- adjust multiplier as needed
+                    if stealMethod == 'Pathfinding' then
+                        local success = pathFindAndTween(root.Position, speedVal)
+                        if not success then
+                            task.wait(0.5)
+                        end
+                    else
+                        directTween(root.Position, speedVal)
+                    end
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
