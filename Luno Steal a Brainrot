@@ -2,6 +2,46 @@ local GUI = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/basedgooner/SimpleLibrary/refs/heads/main/Luno%20Library"
 ))()
 
+local oldCreateDropdown = GUI.CreateDropdown
+function GUI:CreateDropdown(label, options, default, callback)
+    local dropdown = oldCreateDropdown(self, label, options, default, callback)
+    local dropdownFrame = nil
+
+    for _, obj in pairs(dropdown:GetDescendants()) do
+        if obj:IsA("Frame") and #obj:GetChildren() >= #options then
+            dropdownFrame = obj
+            break
+        end
+    end
+
+    if dropdownFrame then
+        local sf = Instance.new("ScrollingFrame")
+        sf.Name = dropdownFrame.Name
+        sf.Size = dropdownFrame.Size
+        sf.Position = dropdownFrame.Position
+        sf.CanvasSize = UDim2.new(0, 0, 0, #options * 24)
+        sf.ScrollBarThickness = 6
+        sf.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        sf.ScrollingDirection = Enum.ScrollingDirection.Y
+        sf.BackgroundColor3 = dropdownFrame.BackgroundColor3
+        sf.BorderSizePixel = dropdownFrame.BorderSizePixel
+        sf.ZIndex = dropdownFrame.ZIndex
+        sf.Parent = dropdownFrame.Parent
+
+        local layout = Instance.new("UIListLayout")
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Parent = sf
+
+        for _, child in ipairs(dropdownFrame:GetChildren()) do
+            child.Parent = sf
+        end
+
+        dropdownFrame:Destroy()
+    end
+
+    return dropdown
+end
+
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService  = game:GetService("UserInputService")
@@ -29,6 +69,7 @@ local window = GUI:CreateWindow("Steal A Brainrot")
 local page   = window:CreatePage("Movement")
 local visualsPage = window:CreatePage("Visuals")
 local shopPage = window:CreatePage("Shop")
+
 
 local checking       = false
 local walkSpeed      = 40
