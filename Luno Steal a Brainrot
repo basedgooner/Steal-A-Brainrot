@@ -30,7 +30,6 @@ local page   = window:CreatePage("Movement")
 local visualsPage = window:CreatePage("Visuals")
 local shopPage = window:CreatePage("Shop")
 
-
 local checking       = false
 local walkSpeed      = 40
 local keys           = {}
