@@ -489,8 +489,15 @@ local function runPetScanLoop()
 
     while espEnabled or pathfindingEnabled do
         local highest, bestGen = nil, -1
+        local myPlot = getMyPlot() -- Get the local player's plot
+
         for _, m in ipairs(workspace:GetChildren()) do
             if isBasePet(m) and isInEnemyPlot(m) then
+                -- Explicitly exclude pets in the local player's plot
+                local petPlot = getPlotFromPosition(m)
+                if petPlot and petPlot == myPlot then
+                    continue
+                end
                 local g = getFinalGeneration(m)
                 if g > bestGen then
                     bestGen = g
@@ -523,7 +530,7 @@ local function runPetScanLoop()
     highestGenAnimal = nil
     isPetScanRunning = false
 end
-    
+
 page:CreateToggle("Tween Behind Highest Gen", false, function(state)
     pathfindingEnabled = state
     if state then
