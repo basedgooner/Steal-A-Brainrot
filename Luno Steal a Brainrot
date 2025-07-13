@@ -2,46 +2,56 @@ local GUI = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/basedgooner/SimpleLibrary/refs/heads/main/Luno%20Library"
 ))()
 
+
+
+
 local oldCreateDropdown = GUI.CreateDropdown
 function GUI:CreateDropdown(label, options, default, callback)
     local dropdown = oldCreateDropdown(self, label, options, default, callback)
 
-    local dropdownFrame = dropdown:FindFirstChild("DropdownFrame", true)
-    if not dropdownFrame then return dropdown end
+    task.defer(function()
+        local openBtn = dropdown:FindFirstChildWhichIsA("TextButton", true)
+        if not openBtn then return end
 
-    local optionButtons = {}
-    for _, obj in ipairs(dropdownFrame:GetChildren()) do
-        if obj:IsA("TextButton") then
-            table.insert(optionButtons, obj)
-        end
-    end
+        openBtn.MouseButton1Click:Connect(function()
+            task.delay(0.05, function()
+                local dropdownFrame = dropdown:FindFirstChild("DropdownFrame", true)
+                if not dropdownFrame or dropdownFrame:IsA("ScrollingFrame") then return end
 
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.Name = "DropdownScroll"
-    scroll.Position = dropdownFrame.Position
-    scroll.Size = dropdownFrame.Size
-    scroll.CanvasSize = UDim2.new(0, 0, 0, #optionButtons * 24)
-    scroll.ScrollBarThickness = 6
-    scroll.ScrollingDirection = Enum.ScrollingDirection.Y
-    scroll.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
-    scroll.BackgroundColor3 = dropdownFrame.BackgroundColor3
-    scroll.BorderSizePixel = dropdownFrame.BorderSizePixel
-    scroll.ZIndex = dropdownFrame.ZIndex
-    scroll.ClipsDescendants = true
-    scroll.Parent = dropdownFrame.Parent
+                local newFrame = Instance.new("ScrollingFrame")
+                newFrame.Name = dropdownFrame.Name
+                newFrame.Size = dropdownFrame.Size
+                newFrame.Position = dropdownFrame.Position
+                newFrame.CanvasSize = UDim2.new(0, 0, 0, #options * 24)
+                newFrame.ScrollBarThickness = 6
+                newFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                newFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+                newFrame.BackgroundColor3 = dropdownFrame.BackgroundColor3
+                newFrame.BorderSizePixel = dropdownFrame.BorderSizePixel
+                newFrame.ZIndex = dropdownFrame.ZIndex
+                newFrame.ClipsDescendants = true
+                newFrame.Parent = dropdownFrame.Parent
 
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 2)
-    layout.Parent = scroll
+                local layout = Instance.new("UIListLayout")
+                layout.SortOrder = Enum.SortOrder.LayoutOrder
+                layout.Parent = newFrame
 
-    for _, btn in ipairs(optionButtons) do
-        btn.Parent = scroll
-    end
+                for _, child in ipairs(dropdownFrame:GetChildren()) do
+                    if not child:IsA("UIListLayout") then
+                        child.Parent = newFrame
+                    end
+                end
 
-    dropdownFrame:Destroy()
+                dropdownFrame:Destroy()
+            end)
+        end)
+    end)
+
     return dropdown
 end
+
+
+
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
