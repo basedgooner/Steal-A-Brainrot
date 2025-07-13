@@ -5,40 +5,41 @@ local GUI = loadstring(game:HttpGet(
 local oldCreateDropdown = GUI.CreateDropdown
 function GUI:CreateDropdown(label, options, default, callback)
     local dropdown = oldCreateDropdown(self, label, options, default, callback)
-    local dropdownFrame = nil
 
-    for _, obj in pairs(dropdown:GetDescendants()) do
-        if obj:IsA("Frame") and #obj:GetChildren() >= #options then
-            dropdownFrame = obj
-            break
+    local dropdownFrame = dropdown:FindFirstChild("DropdownFrame", true)
+    if not dropdownFrame then return dropdown end
+
+    local optionButtons = {}
+    for _, obj in ipairs(dropdownFrame:GetChildren()) do
+        if obj:IsA("TextButton") then
+            table.insert(optionButtons, obj)
         end
     end
 
-    if dropdownFrame then
-        local sf = Instance.new("ScrollingFrame")
-        sf.Name = dropdownFrame.Name
-        sf.Size = dropdownFrame.Size
-        sf.Position = dropdownFrame.Position
-        sf.CanvasSize = UDim2.new(0, 0, 0, #options * 24)
-        sf.ScrollBarThickness = 6
-        sf.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        sf.ScrollingDirection = Enum.ScrollingDirection.Y
-        sf.BackgroundColor3 = dropdownFrame.BackgroundColor3
-        sf.BorderSizePixel = dropdownFrame.BorderSizePixel
-        sf.ZIndex = dropdownFrame.ZIndex
-        sf.Parent = dropdownFrame.Parent
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Name = "DropdownScroll"
+    scroll.Position = dropdownFrame.Position
+    scroll.Size = dropdownFrame.Size
+    scroll.CanvasSize = UDim2.new(0, 0, 0, #optionButtons * 24)
+    scroll.ScrollBarThickness = 6
+    scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    scroll.AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y
+    scroll.BackgroundColor3 = dropdownFrame.BackgroundColor3
+    scroll.BorderSizePixel = dropdownFrame.BorderSizePixel
+    scroll.ZIndex = dropdownFrame.ZIndex
+    scroll.ClipsDescendants = true
+    scroll.Parent = dropdownFrame.Parent
 
-        local layout = Instance.new("UIListLayout")
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Parent = sf
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 2)
+    layout.Parent = scroll
 
-        for _, child in ipairs(dropdownFrame:GetChildren()) do
-            child.Parent = sf
-        end
-
-        dropdownFrame:Destroy()
+    for _, btn in ipairs(optionButtons) do
+        btn.Parent = scroll
     end
 
+    dropdownFrame:Destroy()
     return dropdown
 end
 
