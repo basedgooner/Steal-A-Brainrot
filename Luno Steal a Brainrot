@@ -1,22 +1,19 @@
-local GUI = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/basedgooner/SimpleLibrary/refs/heads/main/Luno%20Library"
-))()
-
-local Players           = game:GetService("Players")
+local GUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/basedgooner/Luno-V2/refs/heads/main/Luno%20V2"))()
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService  = game:GetService("UserInputService")
-local RunService        = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
+local TweenService = game:GetService("TweenService")
 
-local player     = Players.LocalPlayer
-local buyRemote  = ReplicatedStorage.Packages.Net["RF/CoinsShopService/RequestBuy"]
+local player = Players.LocalPlayer
+local buyRemote = ReplicatedStorage.Packages.Net["RF/CoinsShopService/RequestBuy"]
 
 local AnimalsModule = require(ReplicatedStorage.Datas.Animals)
 local TraitsModule = require(ReplicatedStorage.Datas.Traits)
 local GameModule = require(ReplicatedStorage.Shared.Game)
 
 require(ReplicatedStorage.Controllers:WaitForChild("CharacterController"))
-
 local charController = require(ReplicatedStorage.Controllers:WaitForChild("CharacterController"))
 charController.update = function() end
 
@@ -26,22 +23,23 @@ pcall(function()
 end)
 
 local window = GUI:CreateWindow("Steal A Brainrot")
-local page   = window:CreatePage("Movement")
+local stealPage = window:CreatePage("Steal") -- New Steal page
+local page = window:CreatePage("Movement")
 local visualsPage = window:CreatePage("Visuals")
 local shopPage = window:CreatePage("Shop")
-local autoBuyPage = window:CreatePage("Auto Buy") -- New page from Script 2
+local autoBuyPage = window:CreatePage("Auto Buy")
 
-local checking       = false
-local walkSpeed      = 40
-local keys           = {}
-local charConn       = nil
+local checking = false
+local walkSpeed = 40
+local keys = {}
+local charConn = nil
 local infiniteJumpEnabled = false
-local bypassMode     = "None"
+local bypassMode = "None"
 local pathfindingEnabled = false
 local pathfindingCoroutine = nil
 local notifiedThresholds = {}
 
--- Auto Buy variables from Script 2
+-- Auto Buy variables
 local featureEnabled = false
 local BaseLerpSpeed = 0.2
 local LerpSpeed = BaseLerpSpeed
@@ -51,6 +49,170 @@ local WaypointDistanceThreshold = 1.5
 local speedMode = "Normal"
 local SelectedAnimals = {}
 
+-- Steal page variables
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
+local hrp = char:WaitForChild("HumanoidRootPart")
+local random = Random.new()
+local teleporting
+local tpAmt
+
+-- Calculate tpAmt based on network ping for Steal page
+task.spawn(function()
+    while true do
+        local ping = player:GetNetworkPing() * 1000
+        tpAmt = math.clamp(math.floor(ping * 0.8), 10, 150)
+        RunService.Heartbeat:Wait()
+    end
+end)
+
+-- Core teleport function for Steal page
+local function TP(position)
+    if not teleporting then
+        teleporting = true
+        if typeof(position) == "CFrame" then
+            hrp.CFrame = position + Vector3.new(
+                random:NextNumber(-0.0001, 0.0001),
+                random:NextNumber(-0.0001, 0.0001),
+                random:NextNumber(-0.0001, 0.0001)
+            )
+            RunService.Heartbeat:Wait()
+            teleporting = false
+        end
+    end
+end
+
+-- Find delivery hitbox for Steal page
+local function FindDelivery()
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then return end
+    for _, plot in pairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        if sign then
+            local yourBase = sign:FindFirstChild("YourBase")
+            if yourBase and yourBase.Enabled then
+                local hitbox = plot:FindFirstChild("DeliveryHitbox")
+                if hitbox then return hitbox end
+            end
+        end
+    end
+end
+
+-- TP to Delivery Box logic
+local function DeliverBrainrot()
+    local hitbox = FindDelivery()
+    if not hitbox then
+        window:Notify("Error: DeliveryHitbox not found", "danger")
+        return
+    end
+
+    local target = hitbox.CFrame * CFrame.new(0, -4, 2.5)
+    local void = CFrame.new(0, -50000, 0)
+    
+    local i = 0
+    while i < (tpAmt or 70) do
+        TP(target)
+        i += 1
+    end
+    
+    for _ = 1, 4 do
+    TP(void)
+end
+
+-- Wait longer in the void to force physics to reset harder
+task.wait(0.25)
+
+i = 0
+while i < (tpAmt / 12) do -- slightly more repeat
+    TP(target)
+    i += 1
+end
+
+    
+    task.wait(1)
+local distance = (hrp.Position - target.Position).Magnitude
+if distance <= 30 then
+    local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    window:Notify("Teleport Succeeded!", "success")
+else
+    window:Notify("Teleport Failed: Too far (" .. math.floor(distance) .. ")", "danger")
+end
+end
+
+-- TP Inside Nearest Base logic
+local function TPNearestBase()
+    local plotsFolder = workspace:FindFirstChild("Plots")
+    if not plotsFolder then
+        window:Notify("Error: Plots folder not found", "danger")
+        return
+    end
+
+    local closestBrainrot = nil
+    local shortestDistance = math.huge
+
+    for _, plot in pairs(plotsFolder:GetChildren()) do
+        local plotSign = plot:FindFirstChild("PlotSign")
+        if plotSign then
+            local plotSignText = plotSign:FindFirstChild("SurfaceGui"):FindFirstChild("Frame"):FindFirstChild("TextLabel")
+            if plotSignText and plotSignText.ContentText ~= "Empty Base" then
+                local yourBase = plotSign:FindFirstChild("YourBase")
+                if yourBase and not yourBase.Enabled then
+                    local podiums = plot:FindFirstChild("AnimalPodiums")
+                    if podiums then
+                        for _, brainrot in pairs(podiums:GetChildren()) do
+                            if brainrot:IsA("Model") and brainrot:FindFirstChild("Base"):FindFirstChild("Spawn") then
+                                local brainrotSpawn = brainrot.Base.Spawn
+                                local distance = (brainrotSpawn.Position - hrp.Position).Magnitude
+                                if distance < shortestDistance then
+                                    shortestDistance = distance
+                                    closestBrainrot = brainrotSpawn
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if not closestBrainrot then
+        window:Notify("Error: No valid podium found", "danger")
+        return
+    end
+
+    local target = closestBrainrot.CFrame * CFrame.new(0, 2, 0)
+    local void = CFrame.new(0, -100000, 0)
+    
+    local i = 0
+    while i < (tpAmt or 70) do
+        TP(target)
+        i += 1
+    end
+    
+    for _ = 1, 2 do
+        TP(void)
+    end
+    
+    i = 0
+    while i < (tpAmt / 16) do
+        TP(target)
+        i += 1
+    end
+    
+    task.wait(1)
+    local distance = (hrp.Position - target.Position).Magnitude
+    if distance <= 30 then
+        window:Notify("Teleport Succeeded!", "success")
+    else
+        window:Notify("Teleport Failed: Too far (" .. math.floor(distance) .. ")", "danger")
+    end
+end
+
+-- Create buttons on the Steal page
+stealPage:CreateButton("TP to Delivery Box", DeliverBrainrot)
+stealPage:CreateButton("TP Inside Nearest Base", TPNearestBase)
+
+-- Original script logic
 do
     local mt, old = getrawmetatable(game), nil
     setreadonly(mt, false)
@@ -489,15 +651,8 @@ local function runPetScanLoop()
 
     while espEnabled or pathfindingEnabled do
         local highest, bestGen = nil, -1
-        local myPlot = getMyPlot() -- Get the local player's plot
-
         for _, m in ipairs(workspace:GetChildren()) do
             if isBasePet(m) and isInEnemyPlot(m) then
-                -- Explicitly exclude pets in the local player's plot
-                local petPlot = getPlotFromPosition(m)
-                if petPlot and petPlot == myPlot then
-                    continue
-                end
                 local g = getFinalGeneration(m)
                 if g > bestGen then
                     bestGen = g
@@ -550,19 +705,19 @@ RunService.RenderStepped:Connect(function(dt)
     if not checking then return end
     
     local char = player.Character
-    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-    local hum  = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not (char and hrp and hum and hum.Health > 0) then return end
 
     local vec = Vector3.zero
     if keys[Enum.KeyCode.W] then vec += Vector3.new(0, 0, -1) end
-    if keys[Enum.KeyCode.S] then vec += Vector3.new(0, 0,  1) end
+    if keys[Enum.KeyCode.S] then vec += Vector3.new(0, 0, 1) end
     if keys[Enum.KeyCode.A] then vec += Vector3.new(-1, 0, 0) end
-    if keys[Enum.KeyCode.D] then vec += Vector3.new( 1, 0, 0) end
+    if keys[Enum.KeyCode.D] then vec += Vector3.new(1, 0, 0) end
     if vec.Magnitude == 0 then return end
 
-    local dir  = workspace.CurrentCamera.CFrame:VectorToWorldSpace(vec).Unit
-    local pos  = hrp.Position + dir * walkSpeed * dt
+    local dir = workspace.CurrentCamera.CFrame:VectorToWorldSpace(vec).Unit
+    local pos = hrp.Position + dir * walkSpeed * dt
     hrp.CFrame = CFrame.lookAt(pos, pos + Vector3.new(dir.X, 0, dir.Z).Unit)
 end)
 
@@ -764,7 +919,6 @@ visualsPage:CreateToggle("View Plot Timers", false, function(state)
     end
 end)
 
--- Auto Buy Logic from Script 2
 local animalPricePairs = {}
 local nameToIndex = {}
 for animalName, data in pairs(AnimalsModule) do
