@@ -106,7 +106,7 @@ local function DeliverBrainrot()
         return
     end
 
-    local target = hitbox.CFrame * CFrame.new(0, -4, 2.5)
+    local target = hitbox.CFrame * CFrame.new(0, -3, 0)
     local void = CFrame.new(0, -50000, 0)
     
     local i = 0
@@ -115,30 +115,24 @@ local function DeliverBrainrot()
         i += 1
     end
     
-    for _ = 1, 4 do
-    TP(void)
-end
-
--- Wait longer in the void to force physics to reset harder
-task.wait(0.25)
-
-i = 0
-while i < (tpAmt / 12) do -- slightly more repeat
-    TP(target)
-    i += 1
-end
-
+    for _ = 1, 2 do
+        TP(void)
+    end
+    
+    i = 0
+    while i < (tpAmt / 16) do
+        TP(target)
+        i += 1
+    end
     
     task.wait(1)
-local distance = (hrp.Position - target.Position).Magnitude
-if distance <= 30 then
-    local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-    window:Notify("Teleport Succeeded!", "success")
-else
-    window:Notify("Teleport Failed: Too far (" .. math.floor(distance) .. ")", "danger")
+    local distance = (hrp.Position - target.Position).Magnitude
+    if distance <= 30 then
+        window:Notify("Teleport Succeeded!", "success")
+    else
+        window:Notify("Teleport Failed: Too far (" .. math.floor(distance) .. ")", "danger")
+    end
 end
-end
-
 -- TP Inside Nearest Base logic
 local function TPNearestBase()
     local plotsFolder = workspace:FindFirstChild("Plots")
