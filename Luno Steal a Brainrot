@@ -23,18 +23,21 @@ pcall(function()
 end)
 
 local window = GUI:CreateWindow("Steal A Brainrot")
-local stealPage = window:CreatePage("Steal") -- New Steal page
+local stealPage = window:CreatePage("Steal")
 local page = window:CreatePage("Movement")
 local visualsPage = window:CreatePage("Visuals")
 local shopPage = window:CreatePage("Shop")
 local autoBuyPage = window:CreatePage("Auto Buy")
 
-local checking = false
-local walkSpeed = 40
-local keys = {}
-local charConn = nil
+-- Movement variables
+local speedBypassEnabled = false
+local speedBypassMode = "Fast"
+local normalWalkSpeed = 25
 local infiniteJumpEnabled = false
-local bypassMode = "None"
+local walkspeedConnection = nil
+local currentTargetSpeed = 16
+
+-- Pathfinding & ESP variables
 local pathfindingEnabled = false
 local pathfindingCoroutine = nil
 local notifiedThresholds = {}
@@ -46,7 +49,7 @@ local LerpSpeed = BaseLerpSpeed
 local HeightOffset = 3
 local DelayBetweenPurchases = 0
 local WaypointDistanceThreshold = 1.5
-local speedMode = "Normal"
+local autoBuySpeedMode = "Normal"
 local SelectedAnimals = {}
 
 -- Steal page variables
@@ -57,7 +60,6 @@ local random = Random.new()
 local teleporting
 local tpAmt
 
--- Calculate tpAmt based on network ping for Steal page
 task.spawn(function()
     while true do
         local ping = player:GetNetworkPing() * 1000
@@ -66,7 +68,6 @@ task.spawn(function()
     end
 end)
 
--- Core teleport function for Steal page
 local function TP(position)
     if not teleporting then
         teleporting = true
@@ -82,7 +83,6 @@ local function TP(position)
     end
 end
 
--- Find delivery hitbox for Steal page
 local function FindDelivery()
     local plots = workspace:FindFirstChild("Plots")
     if not plots then return end
@@ -98,52 +98,28 @@ local function FindDelivery()
     end
 end
 
--- TP to Delivery Box logic
 local function DeliverBrainrot()
     local hitbox = FindDelivery()
     if not hitbox then
         window:Notify("Error: DeliveryHitbox not found", "danger")
         return
     end
-
     local target = hitbox.CFrame * CFrame.new(0, -3, 0)
     local void = CFrame.new(0, -50000, 0)
-    
     local i = 0
-    while i < (tpAmt or 70) do
-        TP(target)
-        i += 1
-    end
-    
-    for _ = 1, 2 do
-        TP(void)
-    end
-    
+    while i < (tpAmt or 70) do TP(target) i += 1 end
+    for _ = 1, 2 do TP(void) end
     i = 0
-    while i < (tpAmt / 16) do
-        TP(target)
-        i += 1
-    end
-    
+    while i < (tpAmt / 16) do TP(target) i += 1 end
     task.wait(1)
     local distance = (hrp.Position - target.Position).Magnitude
-    if distance <= 30 then
-        window:Notify("Teleport Succeeded!", "success")
-    else
-        window:Notify("Teleport Failed: Too far (" .. math.floor(distance) .. ")", "danger")
-    end
+    if distance <= 30 then window:Notify("Teleport Succeeded!", "success") else window:Notify("Teleport Failed: Too far (" .. math.floor(distance) .. ")", "danger") end
 end
--- TP Inside Nearest Base logic
+
 local function TPNearestBase()
     local plotsFolder = workspace:FindFirstChild("Plots")
-    if not plotsFolder then
-        window:Notify("Error: Plots folder not found", "danger")
-        return
-    end
-
-    local closestBrainrot = nil
-    local shortestDistance = math.huge
-
+    if not plotsFolder then window:Notify("Error: Plots folder not found", "danger") return end
+    local closestBrainrot, shortestDistance = nil, math.huge
     for _, plot in pairs(plotsFolder:GetChildren()) do
         local plotSign = plot:FindFirstChild("PlotSign")
         if plotSign then
@@ -155,12 +131,8 @@ local function TPNearestBase()
                     if podiums then
                         for _, brainrot in pairs(podiums:GetChildren()) do
                             if brainrot:IsA("Model") and brainrot:FindFirstChild("Base"):FindFirstChild("Spawn") then
-                                local brainrotSpawn = brainrot.Base.Spawn
-                                local distance = (brainrotSpawn.Position - hrp.Position).Magnitude
-                                if distance < shortestDistance then
-                                    shortestDistance = distance
-                                    closestBrainrot = brainrotSpawn
-                                end
+                                local brainrotSpawn, distance = brainrot.Base.Spawn, (brainrot.Base.Spawn.Position - hrp.Position).Magnitude
+                                if distance < shortestDistance then shortestDistance, closestBrainrot = distance, brainrotSpawn end
                             end
                         end
                     end
@@ -168,192 +140,114 @@ local function TPNearestBase()
             end
         end
     end
-
-    if not closestBrainrot then
-        window:Notify("Error: No valid podium found", "danger")
-        return
-    end
-
+    if not closestBrainrot then window:Notify("Error: No valid podium found", "danger") return end
     local target = closestBrainrot.CFrame * CFrame.new(0, 2, 0)
     local void = CFrame.new(0, -100000, 0)
-    
     local i = 0
-    while i < (tpAmt or 70) do
-        TP(target)
-        i += 1
-    end
-    
-    for _ = 1, 2 do
-        TP(void)
-    end
-    
+    while i < (tpAmt or 70) do TP(target) i += 1 end
+    for _ = 1, 2 do TP(void) end
     i = 0
-    while i < (tpAmt / 16) do
-        TP(target)
-        i += 1
-    end
-    
+    while i < (tpAmt / 16) do TP(target) i += 1 end
     task.wait(1)
     local distance = (hrp.Position - target.Position).Magnitude
-    if distance <= 30 then
-        window:Notify("Teleport Succeeded!", "success")
-    else
-        window:Notify("Teleport Failed: Too far (" .. math.floor(distance) .. ")", "danger")
-    end
+    if distance <= 30 then window:Notify("Teleport Succeeded!", "success") else window:Notify("Teleport Failed: Too far (" .. math.floor(distance) .. ")", "danger") end
 end
 
--- Create buttons on the Steal page
 stealPage:CreateButton("TP to Delivery Box", DeliverBrainrot)
 stealPage:CreateButton("TP Inside Nearest Base", TPNearestBase)
 
--- Original script logic
-do
-    local mt, old = getrawmetatable(game), nil
-    setreadonly(mt, false)
-    old = mt.__newindex
-
-    mt.__newindex = newcclosure(function(t, k, v)
-        if checking
-           and not checkcaller()
-           and k == "Health"
-           and v == 0
-           and typeof(t) == "Instance"
-           and t:IsA("Humanoid")
-           and t.Parent == player.Character then
-            return
-        end
-        return old(t, k, v)
-    end)
-
-    setreadonly(mt, true)
-end
-
-UserInputService.InputBegan:Connect(function(inp, g)
-    if not g and inp.UserInputType == Enum.UserInputType.Keyboard then
-        keys[inp.KeyCode] = true
-    end
-end)
-UserInputService.InputEnded:Connect(function(inp)
-    if inp.UserInputType == Enum.UserInputType.Keyboard then
-        keys[inp.KeyCode] = false
-    end
-end)
-
+-- Movement and Utility Functions
 UserInputService.JumpRequest:Connect(function()
     if infiniteJumpEnabled and player.Character then
         local hum = player.Character:FindFirstChildOfClass("Humanoid")
-        if hum and hum:GetState() ~= Enum.HumanoidStateType.Seated then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
+        if hum and hum:GetState() ~= Enum.HumanoidStateType.Seated then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
     end
 end)
 
 local function spoofItem(itemName)
-    local backpack = player:FindFirstChild("Backpack")
-    local char = player.Character
+    local backpack = player:FindFirstChild("Backpack"); local char = player.Character
     if not (backpack and char) then return end
-
     local item = backpack:FindFirstChild(itemName) or char:FindFirstChild(itemName)
-    if not item then
-        pcall(function() return buyRemote:InvokeServer(itemName) end)
-        item = backpack:WaitForChild(itemName, 2)
-    end
+    if not item then pcall(function() return buyRemote:InvokeServer(itemName) end); item = backpack:WaitForChild(itemName, 2) end
     if not item then return end
-
     item.Parent = char
     task.wait(0.15)
-    if item:IsA("Tool") then
-        for i = 1, 2 do
-            pcall(function() item:Activate() end)
-            task.wait(0.1)
-        end
-    end
+    if item:IsA("Tool") then for i = 1, 2 do pcall(function() item:Activate() end); task.wait(0.1) end end
     task.wait(0.15)
     item.Parent = backpack
 end
 
 local function findAndEquipItem(itemName, activate)
-    local backpack = player:FindFirstChild("Backpack")
-    local char = player.Character
+    local backpack = player:FindFirstChild("Backpack"); local char = player.Character
     if not (backpack and char) then return false end
-
     local item = backpack:FindFirstChild(itemName) or char:FindFirstChild(itemName)
-    if not item then
-        window:Notify("Purchasing "..itemName, "info")
-        pcall(function() return buyRemote:InvokeServer(itemName) end)
-        task.wait(0.5)
-        item = backpack:WaitForChild(itemName, 0.2)
-    end
-
-    if not item then
-        window:Notify(itemName.." not found after purchase attempt.", "warning")
-        return false
-    end
-
-    if item.Parent ~= char then
-        item.Parent = char
-        task.wait(0.1)
-    end
-    if activate and item:IsA("Tool") then
-        pcall(function() item:Activate() end)
-    end
+    if not item then window:Notify("Purchasing "..itemName, "info"); pcall(function() return buyRemote:InvokeServer(itemName) end); task.wait(0.5); item = backpack:WaitForChild(itemName, 0.2) end
+    if not item then window:Notify(itemName.." not found after purchase attempt.", "warning"); return false end
+    if item.Parent ~= char then item.Parent = char; task.wait(0.1) end
+    if activate and item:IsA("Tool") then pcall(function() item:Activate() end) end
     return true
 end
 
 local function unequipItem(itemName)
-    local backpack = player:FindFirstChild("Backpack")
-    local char = player.Character
+    local backpack = player:FindFirstChild("Backpack"); local char = player.Character
     if not (backpack and char) then return end
-
     local item = char:FindFirstChild(itemName)
-    if item then
-        item.Parent = backpack
-    end
+    if item then item.Parent = backpack end
 end
 
-local function onCharacterAdded()
-    if bypassMode == "Bypass Speed" then
-        task.defer(function() spoofItem("Speed Coil") end)
-    elseif bypassMode == "Bypass Speed MAX" then
-        task.defer(function() spoofItem("Invisibility Cloak") end)
+local function manageSpeed()
+    local char = player.Character
+    if not char then if walkspeedConnection then walkspeedConnection:Disconnect() end; return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then if walkspeedConnection then walkspeedConnection:Disconnect() end; return end
+
+    if not speedBypassEnabled then
+        currentTargetSpeed = normalWalkSpeed
+    else
+        if speedBypassMode == "Fast" then
+            currentTargetSpeed = 72
+            spoofItem("Speed Coil")
+        elseif speedBypassMode == "Max" then
+            currentTargetSpeed = 108
+            spoofItem("Invisibility Cloak")
+        end
     end
+    
+    if walkspeedConnection then walkspeedConnection:Disconnect(); walkspeedConnection = nil end
+    
+    humanoid.WalkSpeed = currentTargetSpeed
+    
+    walkspeedConnection = humanoid.Changed:Connect(function(prop)
+        if prop == "WalkSpeed" and humanoid.WalkSpeed ~= currentTargetSpeed then
+            humanoid.WalkSpeed = currentTargetSpeed
+        end
+    end)
+end
+
+local function onCharacterAdded(character)
+    character:WaitForChild("Humanoid")
+    manageSpeed()
 end
 
 local function toggleCharacterController(state)
     local controller = require(ReplicatedStorage.Controllers:WaitForChild("CharacterController"))
-    if state then
-        controller.update = function() end
-    else
-        controller.update = nil
-        require(ReplicatedStorage.Controllers:WaitForChild("CharacterController")) 
-    end
+    if state then controller.update = function() end else controller.update = nil; require(ReplicatedStorage.Controllers:WaitForChild("CharacterController")) end
 end
 
-page:CreateDropdown("Speed Bypass Mode", {"None", "Bypass Speed", "Bypass Speed MAX"}, "None", function(value)
-    bypassMode = value
-    if value == "Bypass Speed" then
-        spoofItem("Speed Coil")
-    elseif value == "Bypass Speed MAX" then
-        spoofItem("Invisibility Cloak")
-    end
-    if charConn then charConn:Disconnect() end
-    charConn = player.CharacterAdded:Connect(onCharacterAdded)
-    if player.Character then onCharacterAdded() end
+-- Create Movement GUI
+page:CreateToggle("Enable Speed Bypass", false, function(state)
+    speedBypassEnabled = state
+    manageSpeed()
 end)
 
-page:CreateToggle("CFrame Speed Bypass", false, function(state)
-    checking = state
-    if checking then
-        if charConn then charConn:Disconnect() end
-        charConn = player.CharacterAdded:Connect(onCharacterAdded)
-        if player.Character then onCharacterAdded() end
-    else
-        if charConn then charConn:Disconnect(); charConn = nil end
-    end
+page:CreateDropdown("Bypass Mode", {"Fast", "Max"}, "Fast", function(value)
+    speedBypassMode = value
+    manageSpeed()
 end)
 
-page:CreateSlider("Walk Speed", 25, 75, walkSpeed, function(v)
-    walkSpeed = v
+page:CreateSlider("Normal Walk Speed", 16, 75, normalWalkSpeed, function(v)
+    normalWalkSpeed = v
+    manageSpeed()
 end)
 
 page:CreateToggle("Infinite Jump", false, function(state)
@@ -361,6 +255,10 @@ page:CreateToggle("Infinite Jump", false, function(state)
     toggleCharacterController(state)
 end)
 
+player.CharacterAdded:Connect(onCharacterAdded)
+if player.Character then onCharacterAdded(player.Character) end
+
+-- ESP, Pathfinding, and Visuals
 local espEnabled = false
 local isPetScanRunning = false
 local highestGenAnimal = nil
@@ -385,36 +283,17 @@ local ALL_ANIMAL_NAMES = {
 
 local function getPlotFromPosition(pos)
     if typeof(pos) ~= "Vector3" then
-        if pos:IsA("Model") then
-            local root = pos:FindFirstChild("RootPart") or pos:FindFirstChildWhichIsA("BasePart")
-            if not root then return nil end
-            pos = root.Position
-        elseif pos:IsA("BasePart") then
-            pos = pos.Position
-        else
-            return nil
-        end
+        if pos:IsA("Model") then local root = pos:FindFirstChild("RootPart") or pos:FindFirstChildWhichIsA("BasePart"); if not root then return nil end; pos = root.Position
+        elseif pos:IsA("BasePart") then pos = pos.Position else return nil end
     end
-
-    local plotsFolder = workspace:FindFirstChild("Plots")
-    if not plotsFolder then return nil end
-
-    local closestPlot = nil
-    local shortestDist = math.huge
-
+    local plotsFolder = workspace:FindFirstChild("Plots"); if not plotsFolder then return nil end
+    local closestPlot, shortestDist = nil, math.huge
     for _, plot in ipairs(plotsFolder:GetChildren()) do
         local podiums = plot:FindFirstChild("AnimalPodiums")
         if podiums then
             for _, podium in ipairs(podiums:GetChildren()) do
-                local base = podium:FindFirstChild("Base")
-                local spawn = base and base:FindFirstChild("Spawn")
-                if spawn and spawn:IsA("BasePart") then
-                    local dist = (spawn.Position - pos).Magnitude
-                    if dist < shortestDist then
-                        shortestDist = dist
-                        closestPlot = plot
-                    end
-                end
+                local base = podium:FindFirstChild("Base"); local spawn = base and base:FindFirstChild("Spawn")
+                if spawn and spawn:IsA("BasePart") then local dist = (spawn.Position - pos).Magnitude; if dist < shortestDist then shortestDist, closestPlot = dist, plot end end
             end
         end
     end
@@ -434,250 +313,93 @@ local function isInEnemyPlot(model)
     return not myPlot:IsAncestorOf(model)
 end
 
-local function isBasePet(m)
-    return m:IsA("Model") and ALL_ANIMAL_NAMES[m.Name]
-end
+local function isBasePet(m) return m:IsA("Model") and ALL_ANIMAL_NAMES[m.Name] end
 
-local function clearPetESP()
-    for _, m in ipairs(workspace:GetChildren()) do
-        if m:FindFirstChild("PetESP") then m.PetESP:Destroy() end
-        if m:FindFirstChild("PetESP_Label") then m.PetESP_Label:Destroy() end
-    end
-end
+local function clearPetESP() for _, m in ipairs(workspace:GetDescendants()) do if m.Name == "PetESP" or m.Name == "PetESP_Label" then m:Destroy() end end end
 
 local function startRainbow(obj, prop)
     local cycleTime = 4
-    task.spawn(function()
-        while obj and obj.Parent do
-            local h = (tick() % cycleTime) / cycleTime
-            obj[prop] = Color3.fromHSV(h, 1, 1)
-            RunService.Heartbeat:Wait()
-        end
-    end)
+    task.spawn(function() while obj and obj.Parent do local h = (tick() % cycleTime) / cycleTime; obj[prop] = Color3.fromHSV(h, 1, 1); RunService.Heartbeat:Wait() end end)
 end
 
-local function formatNumber(n)
-    return tostring(n):reverse():gsub('%d%d%d', '%1,'):reverse():gsub('^,', '')
-end
+local function formatNumber(n) return tostring(n):reverse():gsub('%d%d%d', '%1,'):reverse():gsub('^,', '') end
 
 local HttpService = game:GetService("HttpService")
 local MutationsModule = require(ReplicatedStorage.Datas.Mutations)
 
 local function getTraitMultiplier(model)
-    local traitSource = model:FindFirstChild("Instance") or model
-    local traitJson = traitSource:GetAttribute("Traits")
+    local traitSource = model:FindFirstChild("Instance") or model; local traitJson = traitSource:GetAttribute("Traits")
     if not traitJson then return 1 end
-
-    local success, traitList = pcall(function()
-        return HttpService:JSONDecode(traitJson)
-    end)
+    local success, traitList = pcall(function() return HttpService:JSONDecode(traitJson) end)
     if not success or typeof(traitList) ~= "table" then return 1 end
-
     local mult = 1
-    for _, traitName in ipairs(traitList) do
-        local trait = TraitsModule[traitName]
-        if trait and trait.MultiplierModifier then
-            mult *= trait.MultiplierModifier
-        end
-    end
+    for _, traitName in ipairs(traitList) do local trait = TraitsModule[traitName]; if trait and trait.MultiplierModifier then mult *= trait.MultiplierModifier end end
     return mult
 end
 
 local function getMutationMultiplier(model)
-    local mutation = model:GetAttribute("Mutation")
-    if not mutation then return 1 end
-
-    local data = MutationsModule[mutation]
-    if data and data.MultiplierModifier then
-        return data.MultiplierModifier
-    end
-    return 1
+    local mutation = model:GetAttribute("Mutation"); if not mutation then return 1 end
+    local data = MutationsModule[mutation]; return (data and data.MultiplierModifier) or 1
 end
 
 local function getFinalGeneration(model)
-    local animalData = AnimalsModule[model.Name]
-    if not animalData then return 0 end
-
-    local baseGen = animalData.Generation or 0
-    local traitMult = getTraitMultiplier(model)
-    local mutationMult = getMutationMultiplier(model)
-    local total = baseGen * traitMult * mutationMult
-
-    return math.round(total), baseGen, traitMult, mutationMult
+    local animalData = AnimalsModule[model.Name]; if not animalData then return 0 end
+    local baseGen, traitMult, mutationMult = animalData.Generation or 0, getTraitMultiplier(model), getMutationMultiplier(model)
+    return math.round(baseGen * traitMult * mutationMult), baseGen, traitMult, mutationMult
 end
 
 local function attachPetESP(m, g)
-    local root = m:FindFirstChild("RootPart") or m:FindFirstChildWhichIsA("BasePart")
-    if not root then return end
-
-    local hl = Instance.new('Highlight')
-    hl.Name = "PetESP"
-    hl.Adornee = m
-    hl.OutlineColor = Color3.new(0, 0, 0)
-    hl.FillTransparency = 0.25
-    hl.OutlineTransparency = 0
-    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    hl.Parent = m
-    startRainbow(hl, "FillColor")
-    startRainbow(hl, "OutlineColor")
-
-    local gui = Instance.new('BillboardGui')
-    gui.Name = "PetESP_Label"
-    gui.Adornee = root
-    gui.AlwaysOnTop = true
-    gui.Size = UDim2.new(0, 400, 0, 80)
-    gui.StudsOffset = Vector3.new(0, 6.5, 0)
-    gui.Parent = m
-
-    local n = Instance.new('TextLabel')
-    n.Size = UDim2.new(1, 0, 0.5, 0)
-    n.Position = UDim2.new(0.5, 0, 0.35, 0)
-    n.AnchorPoint = Vector2.new(0.5, 0.5)
-    n.BackgroundTransparency = 1
-    n.Font = Enum.Font.GothamBlack
-    n.TextSize = 22
-    n.Text = m.Name:upper()
-    n.TextXAlignment = Enum.TextXAlignment.Center
-    n.Parent = gui
-
-    local ns = Instance.new('UIStroke')
-    ns.Thickness = 4.5
-    ns.Color = Color3.new(0, 0, 0)
-    ns.Parent = n
-
-    local nso = Instance.new('UIStroke')
-    nso.Thickness = 5.5
-    nso.Color = Color3.new(1, 1, 1)
-    nso.Parent = n
-
-    local gL = Instance.new('TextLabel')
-    gL.Size = UDim2.new(1, 0, 0.5, 0)
-    gL.Position = UDim2.new(0.5, 0, 0.75, 0)
-    gL.AnchorPoint = Vector2.new(0.5, 0.5)
-    gL.BackgroundTransparency = 1
-    gL.Font = Enum.Font.GothamBlack
-    gL.TextSize = 32
-    gL.Text = '$' .. formatNumber(g) .. '/s'
-    gL.TextXAlignment = Enum.TextXAlignment.Center
-    gL.Parent = gui
-
-    local gs = Instance.new('UIStroke')
-    gs.Thickness = 6
-    gs.Color = Color3.new(0, 0, 0)
-    gs.Parent = gL
-
-    local gso = Instance.new('UIStroke')
-    gso.Thickness = 7
-    gso.Color = Color3.new(1, 1, 1)
-    gso.Parent = gL
-
-    startRainbow(n, 'TextColor3')
-    startRainbow(gL, 'TextColor3')
+    local root = m:FindFirstChild("RootPart") or m:FindFirstChildWhichIsA("BasePart"); if not root then return end
+    local hl = Instance.new('Highlight'); hl.Name = "PetESP"; hl.Adornee = m; hl.OutlineColor = Color3.new(0, 0, 0); hl.FillTransparency = 0.25; hl.OutlineTransparency = 0; hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop; hl.Parent = m
+    startRainbow(hl, "FillColor"); startRainbow(hl, "OutlineColor")
+    local gui = Instance.new('BillboardGui'); gui.Name = "PetESP_Label"; gui.Adornee = root; gui.AlwaysOnTop = true; gui.Size = UDim2.new(0, 400, 0, 80); gui.StudsOffset = Vector3.new(0, 6.5, 0); gui.Parent = m
+    local n = Instance.new('TextLabel'); n.Size = UDim2.new(1, 0, 0.5, 0); n.Position = UDim2.new(0.5, 0, 0.35, 0); n.AnchorPoint = Vector2.new(0.5, 0.5); n.BackgroundTransparency = 1; n.Font = Enum.Font.GothamBlack; n.TextSize = 22; n.Text = m.Name:upper(); n.TextXAlignment = Enum.TextXAlignment.Center; n.Parent = gui
+    local ns = Instance.new('UIStroke'); ns.Thickness = 4.5; ns.Color = Color3.new(0, 0, 0); ns.Parent = n
+    local nso = Instance.new('UIStroke'); nso.Thickness = 5.5; nso.Color = Color3.new(1, 1, 1); nso.Parent = n
+    local gL = Instance.new('TextLabel'); gL.Size = UDim2.new(1, 0, 0.5, 0); gL.Position = UDim2.new(0.5, 0, 0.75, 0); gL.AnchorPoint = Vector2.new(0.5, 0.5); gL.BackgroundTransparency = 1; gL.Font = Enum.Font.GothamBlack; gL.TextSize = 32; gL.Text = '$' .. formatNumber(g) .. '/s'; gL.TextXAlignment = Enum.TextXAlignment.Center; gL.Parent = gui
+    local gs = Instance.new('UIStroke'); gs.Thickness = 6; gs.Color = Color3.new(0, 0, 0); gs.Parent = gL
+    local gso = Instance.new('UIStroke'); gso.Thickness = 7; gso.Color = Color3.new(1, 1, 1); gso.Parent = gL
+    startRainbow(n, 'TextColor3'); startRainbow(gL, 'TextColor3')
 end
 
-local function stopPlotMonitoring()
-    for _, conn in ipairs(transparencyConnections) do conn:Disconnect() end
-    table.clear(transparencyConnections)
-    table.clear(notifiedThresholds)
-    currentTargetPlot = nil
-end
+local function stopPlotMonitoring() for _, conn in ipairs(transparencyConnections) do conn:Disconnect() end; table.clear(transparencyConnections); table.clear(notifiedThresholds); currentTargetPlot = nil end
 
 local function setupPlotMonitoring(plotModel)
-    stopPlotMonitoring()
-    currentTargetPlot = plotModel
-    if not plotModel then return end
-
-    local timeLabel
-    pcall(function()
-        timeLabel = plotModel:WaitForChild("Purchases", 2):WaitForChild("PlotBlock", 2):WaitForChild("Main", 2):WaitForChild("BillboardGui", 2):WaitForChild("RemainingTime", 2)
-    end)
-
+    stopPlotMonitoring(); currentTargetPlot = plotModel; if not plotModel then return end
+    local timeLabel; pcall(function() timeLabel = plotModel:WaitForChild("Purchases", 2):WaitForChild("PlotBlock", 2):WaitForChild("Main", 2):WaitForChild("BillboardGui", 2):WaitForChild("RemainingTime", 2) end)
     if timeLabel then
-        local lastText = ""
-        local conn = RunService.Heartbeat:Connect(function()
+        local lastText = ""; local conn = RunService.Heartbeat:Connect(function()
             if not timeLabel or not timeLabel.Parent then return end
-            local current = timeLabel.Text
-            if current ~= lastText then
-                lastText = current
-                local num = tonumber(current:match("(%d+)"))
-                if num then
-                    for t = 200, 10, -10 do
-                        if num <= t and not notifiedThresholds[t] then
-                            notifiedThresholds[t] = true
-                            break
-                        end
-                    end
-                end
-            end
-        end)
-        table.insert(transparencyConnections, conn)
+            local current = timeLabel.Text; if current ~= lastText then lastText = current; local num = tonumber(current:match("(%d+)")); if num then for t = 200, 10, -10 do if num <= t and not notifiedThresholds[t] then notifiedThresholds[t] = true; break end end end end
+        end); table.insert(transparencyConnections, conn)
     end
 end
 
 local function pathfindLoop()
     while pathfindingEnabled and task.wait(1) do
-        local char = player.Character
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local char, humanoid, hrp = player.Character, char and char:FindFirstChildOfClass("Humanoid"), char and char:FindFirstChild("HumanoidRootPart")
         if not (humanoid and hrp and highestGenAnimal) then continue end
-
-        local targetRoot = highestGenAnimal:FindFirstChild("RootPart") or highestGenAnimal:FindFirstChildWhichIsA("BasePart")
-        if not targetRoot then continue end
-
-        local path = PathfindingService:CreatePath()
-        local destination = targetRoot.Position - (targetRoot.CFrame.LookVector * 8)
-        
+        local targetRoot = highestGenAnimal:FindFirstChild("RootPart") or highestGenAnimal:FindFirstChildWhichIsA("BasePart"); if not targetRoot then continue end
+        local path = PathfindingService:CreatePath(); local destination = targetRoot.Position - (targetRoot.CFrame.LookVector * 8)
         local success, err = pcall(function() path:ComputeAsync(hrp.Position, destination) end)
         if not success or path.Status ~= Enum.PathStatus.Success then continue end
-
-        local waypoints = path:GetWaypoints()
-        for _, waypoint in ipairs(waypoints) do
-            if not pathfindingEnabled then break end
-            humanoid:MoveTo(waypoint.Position)
-            humanoid.MoveToFinished:Wait(2)
-        end
+        for _, waypoint in ipairs(path:GetWaypoints()) do if not pathfindingEnabled then break end; humanoid:MoveTo(waypoint.Position); humanoid.MoveToFinished:Wait(2) end
     end
 end
 
 local function runPetScanLoop()
-    if isPetScanRunning then return end
-    isPetScanRunning = true
-
+    if isPetScanRunning then return end; isPetScanRunning = true
     while espEnabled or pathfindingEnabled do
         local highest, bestGen = nil, -1
         for _, m in ipairs(workspace:GetChildren()) do
-            if isBasePet(m) and isInEnemyPlot(m) then
-                local g = getFinalGeneration(m)
-                if g > bestGen then
-                    bestGen = g
-                    highest = m
-                end
-            end
+            if isBasePet(m) and isInEnemyPlot(m) then local g = getFinalGeneration(m); if g > bestGen then bestGen, highest = g, m end end
         end
         highestGenAnimal = highest
-
-        if highest then
-            local plot = getPlotFromPosition(highest)
-            if plot and plot ~= currentTargetPlot then
-                setupPlotMonitoring(plot)
-            end
-        end
-
-        if espEnabled then
-            clearPetESP()
-            if highest then
-                attachPetESP(highest, bestGen)
-            end
-        else
-            clearPetESP()
-        end
+        if highest then local plot = getPlotFromPosition(highest); if plot and plot ~= currentTargetPlot then setupPlotMonitoring(plot) end end
+        if espEnabled then clearPetESP(); if highest then attachPetESP(highest, bestGen) end else clearPetESP() end
         task.wait(INTERVAL)
     end
-    
-    clearPetESP()
-    stopPlotMonitoring()
-    highestGenAnimal = nil
-    isPetScanRunning = false
+    clearPetESP(); stopPlotMonitoring(); highestGenAnimal = nil; isPetScanRunning = false
 end
 
 page:CreateToggle("Tween Behind Highest Gen", false, function(state)
@@ -694,38 +416,10 @@ page:CreateToggle("Tween Behind Highest Gen", false, function(state)
     end
 end)
 
-RunService.RenderStepped:Connect(function(dt)
-    if pathfindingEnabled then return end
-    if not checking then return end
-    
-    local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not (char and hrp and hum and hum.Health > 0) then return end
-
-    local vec = Vector3.zero
-    if keys[Enum.KeyCode.W] then vec += Vector3.new(0, 0, -1) end
-    if keys[Enum.KeyCode.S] then vec += Vector3.new(0, 0, 1) end
-    if keys[Enum.KeyCode.A] then vec += Vector3.new(-1, 0, 0) end
-    if keys[Enum.KeyCode.D] then vec += Vector3.new(1, 0, 0) end
-    if vec.Magnitude == 0 then return end
-
-    local dir = workspace.CurrentCamera.CFrame:VectorToWorldSpace(vec).Unit
-    local pos = hrp.Position + dir * walkSpeed * dt
-    hrp.CFrame = CFrame.lookAt(pos, pos + Vector3.new(dir.X, 0, dir.Z).Unit)
-end)
-
+-- Shop Page
 local shopItems = { 'Slap', 'Speed Coil', 'Trap', 'Iron Slap', 'Gravity Coil', 'Bee Launcher', 'Gold Slap', 'Coil Combo', 'Rage Table', 'Diamond Slap', 'Grapple Hook', 'Taser Gun', 'Emerald Slap', 'Invisibility Cloak', 'Boogie Bomb', 'Ruby Slap', "Medusa's Head", 'Dark Matter Slap', 'Web Slinger', 'Flame Slap', 'Quantum Cloner', 'All Seeing Sentry', 'Nuclear Slap', 'Rainbowrath Sword', 'Galaxy Slap', 'Laser Cape', 'Glitched Slap', 'Body Swap Potion', 'Splatter Slap', 'Paintball Gun' }
 local priorityOrder = { 'Invisibility Cloak', 'Quantum Cloner', "Medusa's Head" }
-table.sort(shopItems, function(a, b)
-    local aIndex = table.find(priorityOrder, a)
-    local bIndex = table.find(priorityOrder, b)
-    if aIndex and bIndex then return aIndex < bIndex
-    elseif aIndex then return true
-    elseif bIndex then return false
-    else return a < b end
-end)
-
+table.sort(shopItems, function(a, b) local aIndex, bIndex = table.find(priorityOrder, a), table.find(priorityOrder, b); if aIndex and bIndex then return aIndex < bIndex elseif aIndex then return true elseif bIndex then return false else return a < b end end)
 local buyingAll = false
 local buyAllToggle = shopPage:CreateToggle("Buy All Items", false, function(value)
     buyingAll = value
@@ -734,318 +428,76 @@ local buyAllToggle = shopPage:CreateToggle("Buy All Items", false, function(valu
             for _, itemName in ipairs(shopItems) do
                 if not buyingAll then break end
                 local success, result = pcall(function() return buyRemote:InvokeServer(itemName) end)
-                if success then window:Notify("Bought " .. itemName, "success")
-                else window:Notify("Failed: " .. itemName, "danger") end
-                task.wait(0.5)
+                if success then window:Notify("Bought " .. itemName, "success") else window:Notify("Failed: " .. itemName, "danger") end; task.wait(0.5)
             end
-            buyAllToggle:Set(false)
-            buyingAll = false
+            buyAllToggle:Set(false); buyingAll = false
         end)
     end
 end)
+for _, itemName in ipairs(shopItems) do shopPage:CreateButton("Buy " .. itemName, function() local s, r = pcall(function() return buyRemote:InvokeServer(itemName) end); if s then window:Notify("Bought "..itemName,"success") else window:Notify("Failed: "..itemName,"danger") end end) end
 
-for _, itemName in ipairs(shopItems) do
-    shopPage:CreateButton("Buy " .. itemName, function()
-        local success, result = pcall(function() return buyRemote:InvokeServer(itemName) end)
-        if success then window:Notify("Bought " .. itemName, "success")
-        else window:Notify("Failed: " .. itemName, "danger") end
-    end)
-end
-
-local plotTimers_Enabled = false
-local plotTimers_Coroutine = nil
-local plotTimers_RenderConnections = {}
-local plotTimers_OriginalProperties = {}
-
+-- Visuals Page
+local plotTimers_Enabled, plotTimers_Coroutine, plotTimers_RenderConnections, plotTimers_OriginalProperties = false, nil, {}, {}
 local function disablePlotTimers()
-    plotTimers_Enabled = false
-    if plotTimers_Coroutine then
-        task.cancel(plotTimers_Coroutine)
-        plotTimers_Coroutine = nil
-    end
-
-    for _, conn in pairs(plotTimers_RenderConnections) do
-        pcall(function() conn:Disconnect() end)
-    end
-    table.clear(plotTimers_RenderConnections)
-
+    plotTimers_Enabled = false; if plotTimers_Coroutine then task.cancel(plotTimers_Coroutine); plotTimers_Coroutine = nil end
+    for _, conn in pairs(plotTimers_RenderConnections) do pcall(function() conn:Disconnect() end) end; table.clear(plotTimers_RenderConnections)
     for label, props in pairs(plotTimers_OriginalProperties) do
-        pcall(function()
-            if label and label.Parent then
-                local bb = label:FindFirstAncestorWhichIsA("BillboardGui")
-                if bb and bb.Parent then
-                    bb.Enabled = props.bb_enabled
-                    bb.AlwaysOnTop = props.bb_alwaysOnTop
-                    bb.Size = props.bb_size
-                    bb.MaxDistance = props.bb_maxDistance
-
-                    label.TextScaled = props.label_textScaled
-                    label.TextWrapped = props.label_textWrapped
-                    label.AutomaticSize = props.label_automaticSize
-                    label.Size = props.label_size
-                    label.TextSize = props.label_textSize
-                end
-            end
-        end)
+        pcall(function() if label and label.Parent then local bb = label:FindFirstAncestorWhichIsA("BillboardGui"); if bb and bb.Parent then bb.Enabled, bb.AlwaysOnTop, bb.Size, bb.MaxDistance = props.bb_enabled, props.bb_alwaysOnTop, props.bb_size, props.bb_maxDistance; label.TextScaled, label.TextWrapped, label.AutomaticSize, label.Size, label.TextSize = props.label_textScaled, props.label_textWrapped, props.label_automaticSize, props.label_size, props.label_textSize end end end)
     end
 end
-
 local function enablePlotTimers()
-    disablePlotTimers()
-    
-    plotTimers_Enabled = true
+    disablePlotTimers(); plotTimers_Enabled = true
     plotTimers_Coroutine = task.spawn(function()
-        local camera = workspace.CurrentCamera
-        local DISTANCE_THRESHOLD = 45
-        local SCALE_START, SCALE_RANGE = 100, 300
-        local MIN_TEXT_SIZE, MAX_TEXT_SIZE = 30, 36
-
+        local camera = workspace.CurrentCamera; local DISTANCE_THRESHOLD, SCALE_START, SCALE_RANGE, MIN_TEXT_SIZE, MAX_TEXT_SIZE = 45, 100, 300, 30, 36
         while plotTimers_Enabled do
-            pcall(function()
-                for _, label in ipairs(workspace.Plots:GetDescendants()) do
-                    if label:IsA("TextLabel") and label.Name == "RemainingTime" then
-                        if plotTimers_RenderConnections[label] then continue end
-
-                        local bb = label:FindFirstAncestorWhichIsA("BillboardGui")
-                        if not bb then continue end
-
-                        local model = bb:FindFirstAncestorWhichIsA("Model")
-                        if not model then continue end
-
-                        local basePart = model:FindFirstChildWhichIsA("BasePart", true)
-                        if not basePart then continue end
-
-                        if not plotTimers_OriginalProperties[label] then
-                            plotTimers_OriginalProperties[label] = {
-                                bb_enabled = bb.Enabled,
-                                bb_alwaysOnTop = bb.AlwaysOnTop,
-                                bb_size = bb.Size,
-                                bb_maxDistance = bb.MaxDistance,
-                                label_textScaled = label.TextScaled,
-                                label_textWrapped = label.TextWrapped,
-                                label_automaticSize = label.AutomaticSize,
-                                label_size = label.Size,
-                                label_textSize = label.TextSize,
-                            }
-                        end
-
-                        bb.MaxDistance = 10000; bb.AlwaysOnTop = true; bb.ClipsDescendants = false
-                        bb.Size = UDim2.new(0, 300, 0, 150)
-                        label.TextScaled = false; label.TextWrapped = true; label.ClipsDescendants = false
-                        label.Size = UDim2.new(1, 0, 0, 32); label.AutomaticSize = Enum.AutomaticSize.Y
-
-                        local conn = RunService.RenderStepped:Connect(function()
-                            if not basePart or not basePart.Parent or not bb or not bb.Parent then
-                                if plotTimers_RenderConnections[label] then
-                                    plotTimers_RenderConnections[label]:Disconnect()
-                                    plotTimers_RenderConnections[label] = nil
-                                end
-                                return
-                            end
-
-                            local distance = (camera.CFrame.Position - basePart.Position).Magnitude
-                            if distance > DISTANCE_THRESHOLD and basePart.Position.Y >= 0 then
-                                bb.Enabled = false
-                                return
-                            end
-
-                            bb.Enabled = true
-                            local t = math.clamp((distance - SCALE_START) / SCALE_RANGE, 0, 1)
-                            local newTextSize = math.clamp(MIN_TEXT_SIZE + (MAX_TEXT_SIZE - MIN_TEXT_SIZE) * t, MIN_TEXT_SIZE, MAX_TEXT_SIZE)
-                            label.TextSize = newTextSize
-                            label.Size = UDim2.new(1, 0, 0, newTextSize + 6)
-                        end)
-                        plotTimers_RenderConnections[label] = conn
-                    end
-                end
-            end)
+            pcall(function() for _, label in ipairs(workspace.Plots:GetDescendants()) do if label:IsA("TextLabel") and label.Name == "RemainingTime" then if plotTimers_RenderConnections[label] then continue end; local bb = label:FindFirstAncestorWhichIsA("BillboardGui"); if not bb then continue end; local model = bb:FindFirstAncestorWhichIsA("Model"); if not model then continue end; local basePart = model:FindFirstChildWhichIsA("BasePart", true); if not basePart then continue end; if not plotTimers_OriginalProperties[label] then plotTimers_OriginalProperties[label] = { bb_enabled = bb.Enabled, bb_alwaysOnTop = bb.AlwaysOnTop, bb_size = bb.Size, bb_maxDistance = bb.MaxDistance, label_textScaled = label.TextScaled, label_textWrapped = label.TextWrapped, label_automaticSize = label.AutomaticSize, label_size = label.Size, label_textSize = label.TextSize, } end; bb.MaxDistance, bb.AlwaysOnTop, bb.ClipsDescendants, bb.Size, label.TextScaled, label.TextWrapped, label.ClipsDescendants, label.Size, label.AutomaticSize = 10000, true, false, UDim2.new(0, 300, 0, 150), false, true, false, UDim2.new(1, 0, 0, 32), Enum.AutomaticSize.Y; local conn = RunService.RenderStepped:Connect(function() if not basePart or not basePart.Parent or not bb or not bb.Parent then if plotTimers_RenderConnections[label] then plotTimers_RenderConnections[label]:Disconnect(); plotTimers_RenderConnections[label] = nil end; return end; local distance = (camera.CFrame.Position - basePart.Position).Magnitude; if distance > DISTANCE_THRESHOLD and basePart.Position.Y >= 0 then bb.Enabled = false; return end; bb.Enabled = true; local t = math.clamp((distance - SCALE_START) / SCALE_RANGE, 0, 1); label.TextSize = math.clamp(MIN_TEXT_SIZE + (MAX_TEXT_SIZE - MIN_TEXT_SIZE) * t, MIN_TEXT_SIZE, MAX_TEXT_SIZE); label.Size = UDim2.new(1, 0, 0, label.TextSize + 6) end); plotTimers_RenderConnections[label] = conn end end end)
             task.wait(1)
         end
     end)
 end
-
-local playerEspEnabled = false
-local espConns = {}
+local playerEspEnabled, espConns = false, {}
 local function togglePlayerESP(state)
-    playerEspEnabled = state
-    local function highlightChar(char)
-        if not char or char:FindFirstChild("HighlightESP") then return end
-        local hl = Instance.new("Highlight")
-        hl.Name = "HighlightESP"; hl.FillTransparency = 0.75; hl.OutlineTransparency = 0.5
-        hl.FillColor = Color3.new(0, 0, 0); hl.OutlineColor = Color3.new(1, 1, 1)
-        hl.Adornee = char; hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop; hl.Parent = char
-    end
-
-    if state then
-        for _, plr in ipairs(Players:GetPlayers()) do
-            if plr ~= player then
-                highlightChar(plr.Character)
-                table.insert(espConns, plr.CharacterAdded:Connect(highlightChar))
-            end
-        end
-        table.insert(espConns, Players.PlayerAdded:Connect(function(p)
-            table.insert(espConns, p.CharacterAdded:Connect(highlightChar))
-        end))
-    else
-        for _, plr in ipairs(Players:GetPlayers()) do
-            local char = plr.Character
-            if char and char:FindFirstChild("HighlightESP") then char.HighlightESP:Destroy() end
-        end
-        for _, conn in ipairs(espConns) do pcall(function() conn:Disconnect() end) end
-        table.clear(espConns)
-    end
+    playerEspEnabled = state; local function highlightChar(char) if not char or char:FindFirstChild("HighlightESP") then return end; local hl = Instance.new("Highlight"); hl.Name = "HighlightESP"; hl.FillTransparency = 0.75; hl.OutlineTransparency = 0.5; hl.FillColor = Color3.new(0, 0, 0); hl.OutlineColor = Color3.new(1, 1, 1); hl.Adornee = char; hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop; hl.Parent = char end
+    if state then for _, plr in ipairs(Players:GetPlayers()) do if plr ~= player then highlightChar(plr.Character); table.insert(espConns, plr.CharacterAdded:Connect(highlightChar)) end end; table.insert(espConns, Players.PlayerAdded:Connect(function(p) table.insert(espConns, p.CharacterAdded:Connect(highlightChar)) end))
+    else for _, plr in ipairs(Players:GetPlayers()) do local char = plr.Character; if char and char:FindFirstChild("HighlightESP") then char.HighlightESP:Destroy() end end; for _, conn in ipairs(espConns) do pcall(function() conn:Disconnect() end) end; table.clear(espConns) end
 end
-visualsPage:CreateToggle("Player ESP", true, togglePlayerESP)
-togglePlayerESP(true)
+visualsPage:CreateToggle("Player ESP", true, togglePlayerESP); togglePlayerESP(true)
+visualsPage:CreateToggle("Highest Gen Brainrot ESP", true, function(state) espEnabled = state; if state and not isPetScanRunning then task.spawn(runPetScanLoop) end end)
+visualsPage:CreateToggle("View Plot Timers", false, function(state) if state then enablePlotTimers() else disablePlotTimers() end end)
 
-visualsPage:CreateToggle("Highest Gen Brainrot ESP", true, function(state)
-    espEnabled = state
-    if state and not isPetScanRunning then
-        task.spawn(runPetScanLoop)
-    end
-end)
-
-visualsPage:CreateToggle("View Plot Timers", false, function(state)
-    if state then
-        enablePlotTimers()
-    else
-        disablePlotTimers()
-    end
-end)
-
-local animalPricePairs = {}
-local nameToIndex = {}
-for animalName, data in pairs(AnimalsModule) do
-    if type(data) == "table" and data.Price and not data.HideFromIndex then
-        table.insert(animalPricePairs, {name = data.DisplayName, price = data.Price, index = animalName})
-        nameToIndex[data.DisplayName] = animalName
-    end
-end
-
+-- Auto Buy Page
+local animalPricePairs, nameToIndex = {}, {}
+for animalName, data in pairs(AnimalsModule) do if type(data) == "table" and data.Price and not data.HideFromIndex then table.insert(animalPricePairs, {name = data.DisplayName, price = data.Price, index = animalName}); nameToIndex[data.DisplayName] = animalName end end
 table.sort(animalPricePairs, function(a, b) return a.price < b.price end)
-
 local priceStrings = {}
-for _, pair in ipairs(animalPricePairs) do
-    local formattedPrice = string.format("%s", string.gsub(tostring(pair.price), "(%d)(%d%d%d)$", "%1,%2"))
-    table.insert(priceStrings, string.format("%s (%s)", pair.name, formattedPrice))
-end
-
-autoBuyPage:CreateDropdown("Speed Mode", {"Slow", "Normal", "Fast", "Speed MAX"}, "Normal", function(option)
-    speedMode = option
-    if option == "Slow" then
-        LerpSpeed = BaseLerpSpeed * 0.75
-    elseif option == "Normal" then
-        LerpSpeed = BaseLerpSpeed
-    elseif option == "Fast" then
-        LerpSpeed = BaseLerpSpeed * 1.35
-        spoofItem("Speed Coil")
-    elseif option == "Speed MAX" then
-        LerpSpeed = BaseLerpSpeed * 1.5
-        spoofItem("Invisibility Cloak")
-    end
-end)
-
-autoBuyPage:CreateDropdown("Target Brainrot", priceStrings, priceStrings[1] or "None", function(values)
-    SelectedAnimals = {}
-    for _, val in ipairs(values) do
-        local animalName = string.match(val, "^(.+) %(")
-        if animalName and nameToIndex[animalName] then
-            table.insert(SelectedAnimals, nameToIndex[animalName])
-        end
-    end
-end, "multi")
-
+for _, pair in ipairs(animalPricePairs) do local formattedPrice = string.format("%s", string.gsub(tostring(pair.price), "(%d)(%d%d%d)$", "%1,%2")); table.insert(priceStrings, string.format("%s (%s)", pair.name, formattedPrice)) end
+autoBuyPage:CreateDropdown("Speed Mode", {"Slow", "Normal", "Fast", "Speed MAX"}, "Normal", function(option) autoBuySpeedMode = option; if option == "Slow" then LerpSpeed = BaseLerpSpeed * 0.75 elseif option == "Normal" then LerpSpeed = BaseLerpSpeed elseif option == "Fast" then LerpSpeed = BaseLerpSpeed * 1.35; spoofItem("Speed Coil") elseif option == "Speed MAX" then LerpSpeed = BaseLerpSpeed * 1.5; spoofItem("Invisibility Cloak") end end)
+autoBuyPage:CreateDropdown("Target Brainrot", priceStrings, priceStrings[1] or "None", function(values) SelectedAnimals = {}; for _, val in ipairs(values) do local animalName = string.match(val, "^(.+) %("); if animalName and nameToIndex[animalName] then table.insert(SelectedAnimals, nameToIndex[animalName]) end end end, "multi")
 local function getTargetAnimal()
-    local animalsFolder = workspace:FindFirstChild("MovingAnimals")
-    if not animalsFolder or #SelectedAnimals == 0 then return nil end
-
-    local bestTarget = nil
-    local highestPrice = -1
-
+    local animalsFolder = workspace:FindFirstChild("MovingAnimals"); if not animalsFolder or #SelectedAnimals == 0 then return nil end
+    local bestTarget, highestPrice = nil, -1
     for _, model in ipairs(animalsFolder:GetChildren()) do
-        local root = model:FindFirstChild("HumanoidRootPart")
-        if not root then continue end
-
-        local attach = root:FindFirstChild("PromptAttachment")
-        if not attach then continue end
-
-        local prompt = attach:FindFirstChildOfClass("ProximityPrompt")
-        if not prompt or prompt:GetAttribute("TargetPlayer") then continue end
-
-        local index = model:GetAttribute("Index")
-        for _, selected in ipairs(SelectedAnimals) do
-            if index == selected then
-                local data = AnimalsModule[index]
-                if data and data.Price and data.Price > highestPrice then
-                    highestPrice = data.Price
-                    bestTarget = {
-                        name = index,
-                        price = data.Price,
-                        prompt = prompt,
-                        root = root
-                    }
-                end
-            end
-        end
+        local root, attach, prompt, index = model:FindFirstChild("HumanoidRootPart"), root and root:FindFirstChild("PromptAttachment"), attach and attach:FindFirstChildOfClass("ProximityPrompt"), model:GetAttribute("Index")
+        if not (root and attach and prompt) or prompt:GetAttribute("TargetPlayer") then continue end
+        for _, selected in ipairs(SelectedAnimals) do if index == selected then local data = AnimalsModule[index]; if data and data.Price and data.Price > highestPrice then highestPrice, bestTarget = data.Price, { name = index, price = data.Price, prompt = prompt, root = root } end end end
     end
     return bestTarget
 end
-
 local function smoothMoveTo(position)
-    local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
+    local char, hrp = player.Character, char and char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
     local targetCFrame = CFrame.new(position + Vector3.new(0, HeightOffset, 0))
-    while featureEnabled do
-        local currentCFrame = hrp.CFrame
-        local newCFrame = currentCFrame:Lerp(targetCFrame, LerpSpeed)
-        hrp.CFrame = newCFrame
-        if (newCFrame.Position - targetCFrame.Position).Magnitude < WaypointDistanceThreshold then
-            break
-        end
-        RunService.Heartbeat:Wait()
-    end
+    while featureEnabled do local currentCFrame = hrp.CFrame; local newCFrame = currentCFrame:Lerp(targetCFrame, LerpSpeed); hrp.CFrame = newCFrame; if (newCFrame.Position - targetCFrame.Position).Magnitude < WaypointDistanceThreshold then break end; RunService.Heartbeat:Wait() end
 end
-
 local function moveToTarget(targetPos)
-    local char = player.Character
-    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not (humanoid and hrp) then return end
-
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        AgentCanClimb = true
-    })
-    path:ComputeAsync(hrp.Position, targetPos)
-
-    if path.Status == Enum.PathStatus.Success then
-        for _, waypoint in ipairs(path:GetWaypoints()) do
-            if not featureEnabled then return end
-            smoothMoveTo(waypoint.Position)
-        end
-    end
+    local char, humanoid, hrp = player.Character, char and char:FindFirstChildOfClass("Humanoid"), char and char:FindFirstChild("HumanoidRootPart"); if not (humanoid and hrp) then return end
+    local path = PathfindingService:CreatePath({ AgentRadius = 2, AgentHeight = 5, AgentCanJump = true, AgentCanClimb = true }); path:ComputeAsync(hrp.Position, targetPos)
+    if path.Status == Enum.PathStatus.Success then for _, waypoint in ipairs(path:GetWaypoints()) do if not featureEnabled then return end; smoothMoveTo(waypoint.Position) end end
 end
-
 autoBuyPage:CreateToggle("Auto Buy Selected", false, function(state)
     featureEnabled = state
-    if state then
-        task.spawn(function()
-            while featureEnabled do
-                local target = getTargetAnimal()
-                if target then
-                    moveToTarget(target.root.Position + Vector3.new(0, 0, 2))
-                    task.wait(DelayBetweenPurchases)
-                    pcall(function() fireproximityprompt(target.prompt) end)
-                end
-                task.wait(0.05)
-            end
-        end)
-    end
+    if state then task.spawn(function() while featureEnabled do local target = getTargetAnimal(); if target then moveToTarget(target.root.Position + Vector3.new(0, 0, 2)); task.wait(DelayBetweenPurchases); pcall(function() fireproximityprompt(target.prompt) end) end; task.wait(0.05) end end) end
 end)
 
+-- Initial run for ESP
 espEnabled = true
 task.spawn(runPetScanLoop)
